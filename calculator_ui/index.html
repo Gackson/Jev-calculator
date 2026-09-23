@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jev · 逐位计算实验室</title>
+  <link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><a class="brand" href="/" aria-label="Jev 计算实验室首页"><span class="brand-icon">j.</span> JEV <span class="brand-sub">/ 实验室</span></a><button type="button" class="connection key-button" id="connection" aria-haspopup="dialog">设置 API Key</button></header>
+    <dialog id="key-dialog" aria-labelledby="key-title" aria-describedby="key-note"><form id="key-form"><div class="section-top"><h2 id="key-title">使用自己的 API Key</h2><button type="button" id="key-close" class="key-close" aria-label="关闭 API 设置">×</button></div><label for="api-key">TypeSafe API Key</label><input id="api-key" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="2048" placeholder="粘贴你的 API Key"><p id="key-note">仅当前页面使用，刷新后清除。</p><p id="key-error" class="key-error" role="alert" hidden></p><div class="key-actions"><button type="button" id="key-clear" class="stop">清除</button><button type="submit" class="primary">使用此 Key</button></div></form></dialog>
+    <section class="intro"><h1>一步一步，算出答案<span>。</span></h1></section>
+    <section class="input-panel" aria-label="输入算式">
+      <div class="mode-controls"><div class="mode-switch" role="group" aria-label="计算模式"><button type="button" id="mode-choice" aria-pressed="true">Choice · 按位计算</button><button type="button" id="mode-noul" aria-pressed="false">Noul · 猜大小</button></div><p id="mode-description" class="mode-description" aria-live="polite">从个位向左逐位选择 0–9，遇到终止符即停止。</p></div>
+      <form id="calculator-form"><label for="expression">输入整数算式</label><div class="input-row"><input id="expression" name="expression" value="128 + 357" placeholder="例如 (128 + 357) × 6" autocomplete="off" spellcheck="false" maxlength="300" required><button class="primary" id="submit" type="submit">开始计算 <span>↗</span></button><button class="stop" id="stop" type="button" hidden>停止</button></div></form>
+      <div class="settings-row"><label class="context-toggle" id="context-control"><input type="checkbox" id="include-context" checked><span>带入之前的预测结果</span></label>
+      <div class="range-control" id="range-control" hidden><label for="upper">绝对值范围：0 至</label><input id="upper" form="calculator-form" inputmode="numeric" pattern="[0-9]+" maxlength="25" value="1000" aria-describedby="range-help"><span id="range-help">上限须大于结果绝对值</span></div>
+      <div class="examples"><button type="button" data-example="128 + 357">加法</button><button type="button" data-example="(48 + 27) * 16">混合运算</button><button type="button" data-example="100 / 7">除法</button><button type="button" data-example="23 - 108">负数</button></div></div>
+    </section>
+    <div class="run-bar"><span id="run-status" role="status" aria-live="polite">准备就绪</span><span class="mono" id="run-meta">右 → 左</span></div>
+    <p class="alert" id="error" role="alert" hidden></p><button type="button" id="first-error" class="first-error" hidden></button>
+    <div class="workspace">
+      <section class="comparison" aria-label="结果对比">
+        <div class="prediction"><div class="section-top"><h2><span class="tiny-dot"></span> JEV 预测</h2><span class="tag" id="mode-tag">CHOICE / 整数</span></div><div class="digits" id="digits"><span class="placeholder">—</span></div><div class="noul-display" id="noul-display" hidden><span id="noul-stage">当前候选区间</span><strong id="noul-value">—</strong></div><div class="prediction-note" id="prediction-note"></div></div>
+        <div class="truth"><div><h2>真实结果</h2></div><div id="actual" class="actual">—</div></div>
+        <div class="comparison-footer"><span id="comparison-note">整数按向零截断比较</span><span class="verdict" id="verdict">待对比</span></div>
+      </section>
+      <aside class="inspector" aria-label="判断详情"><div class="section-top"><h2>判断显微镜</h2></div><div id="detail-empty" class="detail-empty"><div class="inspect-symbol">⌕</div><h3>点击数字或判断查看详情</h3></div><div id="detail" hidden><div class="detail-heading"><span id="detail-place"></span><strong id="detail-choice"></strong></div><p id="detail-question" class="detail-question"></p><div class="confidence"><span id="confidence-label">判断置信度</span><strong id="confidence"></strong></div><div class="top-label"><span>候选选项</span><span id="probability-label">概率 · TOP 3</span></div><div id="candidates"></div><p id="detail-correct" class="detail-correct"></p><p class="detail-footnote" id="detail-footnote"></p></div></aside>
+    </div>
+    <section class="trace-section"><div class="trace-header"><h2>判断列表 <span id="step-count">00</span></h2></div><div id="trace" class="judgment-list"><p class="trace-empty">等待开始计算</p></div></section>
+    <footer><span>POWERED BY TYPESAFE / <span id="model">JEV</span></span></footer>
+  </main>
+</body>
+</html>
