@@ -75,7 +75,7 @@ function setBusy(value) {
   busy = value;
   document.body.classList.toggle('busy', value);
   $('submit').disabled = value;
-  $('submit').replaceChildren(document.createTextNode(value ? t('预测中') : t('开始计算')), node('span', '', value ? '…' : '↗'));
+  $('submit').replaceChildren(document.createTextNode(value ? t('预测中') : t('开始计算')), node('span', '', value ? '…' : '='));
   $('stop').hidden = !value; $('stop').disabled = false;
   ['expression', 'include-context', 'mode-choice', 'mode-noul', 'connection', 'strategy-binary', 'strategy-random'].forEach((id) => { $(id).disabled = value; });
   $('upper').disabled = value || mode !== 'noul';
