@@ -91,9 +91,9 @@ function updateMode() {
   $('upper').disabled = busy || !isNoul;
   $('digits').hidden = isNoul; $('noul-display').hidden = !isNoul;
   $('mode-tag').textContent = t('{mode} / 整数', {mode: mode.toUpperCase()});
-  $('mode-description').textContent = isNoul
-    ? (strategy === 'binary' ? t('取区间中点猜大小；中点为答案时改取相邻数，剩余不足 5 项时逐项确认。') : t('随机取非答案数字猜大小，逐步缩小区间；剩余不足 5 项时逐项确认。'))
-    : t('从个位向左逐位选择 0–9，遇到终止符即停止。');
+  ['choice', 'random', 'binary'].forEach((value) => {
+    $(`description-${value}`).hidden = value !== (isNoul ? strategy : 'choice');
+  });
 }
 // Decorative, one-shot feedback: no input blocking and no persistent particles.
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');

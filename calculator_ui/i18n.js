@@ -1,5 +1,12 @@
 // UI messages only. Language choice never changes model questions or API credentials.
 const messages = {
+  "示例：": {
+    "zh-TW": "範例：",
+    "en": "Examples:",
+    "ja": "例：",
+    "es": "Ejemplos:",
+    "ko": "예시:"
+  },
   "设置 API Key": {
     "zh-TW": "設定 API Key",
     "en": "Set API Key",

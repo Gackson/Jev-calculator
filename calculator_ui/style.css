@@ -54,3 +54,27 @@ footer{justify-content:flex-start;align-items:center;gap:14px}.github-link{displ
 .language-menu button[aria-checked=true]::after{content:'✓';font-size:13px}
 .language-menu button[aria-checked=true]:focus-visible{outline:1px solid var(--orange);outline-offset:-1px}
 @media(max-width:480px){.language-menu button{min-height:42px}.language-button{padding:8px}}
+
+/* Both header controls inherit the same ink, including the globe's stroke. */
+.header-actions .key-button{color:var(--ink)}
+/* Shared grid tracks reserve the larger mode's space without fixed heights. */
+.mode-description{display:grid;width:480px;flex:0 1 480px;text-align:right;align-self:center}.mode-description>span{grid-area:1 / 1;align-self:center}
+.mode-description>span[hidden]{display:block!important;visibility:hidden}
+.settings-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start}
+.mode-settings{display:grid;min-width:0;align-items:start}
+.mode-settings>#context-control,.mode-settings>#range-control{grid-area:1 / 1;min-width:0}
+.mode-settings>#context-control[hidden],.mode-settings>#range-control[hidden]{display:flex!important;visibility:hidden;pointer-events:none}
+.settings-row .context-toggle{justify-self:start;gap:9px;min-height:36px;padding:9px 12px;border:0;border-radius:6px;background:#efefe8;color:var(--muted);font-size:11px;line-height:18px;max-width:100%}
+.context-toggle:has(input:checked){background:#efefe8;color:var(--ink)}
+.context-toggle:hover{background:#e9ebe2}.context-toggle:has(input:disabled){opacity:.55;cursor:wait}
+.context-toggle input{appearance:none;position:relative;flex:0 0 15px;width:15px;height:15px;margin:0;border:1px solid #b8bfb0;border-radius:4px;background:#fffefa;cursor:inherit}
+.context-toggle input:checked{background:var(--green);border-color:var(--green)}
+.context-toggle input:checked::after{content:'';position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #fffefa;border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
+.context-toggle input:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
+.noul-settings .strategy-switch,.settings-row .range-control{min-height:36px}
+.settings-row .examples{align-self:start;min-height:36px;margin-left:0;justify-content:flex-end}
+.examples-label{font-size:10px;color:var(--muted);white-space:nowrap}
+@media(max-width:1100px){.settings-row{grid-template-columns:minmax(0,1fr)}.settings-row .examples{justify-content:flex-start;min-height:24px}}
+@media(forced-colors:active){.context-toggle input{appearance:auto}.context-toggle input:checked::after{display:none}}
+
+@media(max-width:1000px){.mode-description{width:100%;max-width:none;flex:none;text-align:left;align-self:stretch}}
