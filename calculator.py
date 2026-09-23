@@ -95,14 +95,15 @@ def validate_choice(answer, criteria):
             "top_three": [{"option": key, "probability": probs[key]} for key in ranked[:3]]}
 
 
-def predict(expression, model, token, cancelled, call=None, max_digits=MAX_DIGITS, include_context=True):
+def predict(expression, model, token, cancelled, call=None, max_digits=MAX_DIGITS, include_context=True, resume=None, single_step=False):
     """Yield actual judgments sequentially; never pass the reference answer to Jev."""
     if call is None:
         call = lambda payload: system_one(token, payload)
-    digits, negative = [], False
-    started = time.monotonic()
-    total_tokens = 0
-    for position in range(max_digits + 1):
+    state = resume or {}
+    digits, negative = list(state.get("digits", [])), state.get("negative", False)
+    started = time.monotonic() - state.get("elapsed_ms", 0) / 1000
+    total_tokens = state.get("tokens", 0)
+    for position in range(len(digits), max_digits + 1):
         if cancelled.is_set():
             yield {"event": "cancelled"}
             return
@@ -144,6 +145,10 @@ def predict(expression, model, token, cancelled, call=None, max_digits=MAX_DIGIT
             yield {"event": "limit", "message": f"已预测 {max_digits} 位，下一位仍未返回终止符。已停止，本次没有完整结果。"}
             return
         digits.append(answer["choice"])
+        if single_step:
+            yield {"event": "checkpoint", "state": {"digits": digits, "negative": negative,
+                   "tokens": total_tokens, "elapsed_ms": round((time.monotonic() - started) * 1000)}}
+            return
 
 
 ARITHMETIC = ("Compute `expression` using ordinary arithmetic precedence and real division. "
@@ -174,14 +179,16 @@ def random_candidate(low, high, target, rng):
     return value + int(excludes and value >= target)
 
 
-def predict_noul(expression, model, token, cancelled, upper, target, call=None, rng=None, max_steps=128):
+def predict_noul(expression, model, token, cancelled, upper, target, call=None, rng=None, max_steps=128, resume=None, single_step=False):
     """Truth is used only to exclude pivots, never to repair model decisions."""
     if call is None:
         call = lambda payload: system_one(token, payload)
     rng = rng or random.SystemRandom()
-    low, high, count, total_tokens = 0, upper, 0, 0
-    negative = None
-    started = time.monotonic()
+    state = resume or {}
+    low, high = int(state.get("low", 0)), int(state.get("high", upper))
+    count, total_tokens = state.get("count", 0), state.get("tokens", 0)
+    negative = state.get("negative")
+    started = time.monotonic() - state.get("elapsed_ms", 0) / 1000
 
     def ask(questions, state):
         nonlocal negative, total_tokens
@@ -234,6 +241,11 @@ def predict_noul(expression, model, token, cancelled, upper, target, call=None, 
         yield {"event": "comparison", "candidate": str(candidate), "before": before,
                "after": [str(low), str(high)], "choice": "大了" if decision["yes"] else "小了",
                **metadata, **decision}
+        if single_step:
+            yield {"event": "checkpoint", "state": {"low": str(low), "high": str(high),
+                   "count": count, "negative": negative, "tokens": total_tokens,
+                   "elapsed_ms": round((time.monotonic() - started) * 1000)}}
+            return
 
     accepted = []
     if low <= high:
@@ -263,9 +275,8 @@ def predict_noul(expression, model, token, cancelled, upper, target, call=None, 
            "elapsed_ms": round((time.monotonic() - started) * 1000)}
 
 
-def audit_judgments(events, target):
+def audit_judgments(events, target, index=0, first_error=None):
     """Annotate outputs for display only; these labels never feed model context."""
-    index, first_error = 0, None
     for event in events:
         kind = event["event"]
         if kind in ("sign", "digit", "comparison", "candidate"):
@@ -285,6 +296,8 @@ def audit_judgments(events, target):
                 first_error = index
             event = {**event, "judgment_index": index, "correct": correct,
                      "first_error": is_first, "expected": expected}
+        elif kind == "checkpoint":
+            event = {**event, "index": index, "first_error": first_error}
         elif kind == "done":
             event = {**event, "first_error_index": first_error, "judgments": index}
         yield event
@@ -350,6 +363,9 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write((ROOT / "calculator_ui" / filename).read_bytes())
 
     def do_POST(self):
+        if self.path == "/api/step":
+            from step_api import handle_step
+            return handle_step(self, self.server.model)
         # Browser requests must originate from this exact local page.
         origin = self.headers.get("Origin")
         expected = f"http://{self.headers.get('Host')}"

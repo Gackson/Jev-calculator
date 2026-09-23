@@ -50,11 +50,31 @@ Key 输入兼容纯密钥、包裹引号、`Bearer ...` 和 `TYPESAFE_API_KEY=".
 
 官方接口参考：[Choice](https://docs.typesafe.ai/primitives/choice)、[HTTP API](https://docs.typesafe.ai/api)、[置信度](https://docs.typesafe.ai/confidence)。
 
+## 部署到 Vercel
+
+在线体验：[Dumb Calculator](https://jev-calculator-eta.vercel.app/)（需填写自己的 TypeSafe API Key）。
+
+前端和 Python 云函数可部署在同一个 Vercel 项目，无需数据库或额外服务器。
+
+1. 在 Vercel 新建项目，导入 `Gackson/Jev-calculator`。
+2. 项目根目录选择仓库根目录，Framework Preset 使用 `Other`。仓库内的 `vercel.json` 已配置静态目录 `calculator_ui` 和 Python API；无需额外构建命令。
+3. 点击 Deploy。访客在页面填写自己的 TypeSafe API Key，无需给 Vercel 配置共享 Key。
+
+也可在登录 Vercel CLI 后运行 `vercel deploy` 创建预览，正式发布使用 `vercel deploy --prod`。
+
+在线版与本地版使用相同的逐轮接口 `/api/step`：每次最多调用一次 TypeSafe，浏览器保存临时预测进度并发起下一轮。云函数不保存跨请求状态，不依赖某台实例的内存，因此支持多个页面各自计算。点击停止后，当前请求最多完成一轮，后续调用不再发起。每轮上游请求超时为 90 秒，云函数时限为 120 秒。
+
+API Key 只在当前页面内存及当前请求处理期间使用，经同站云函数转发给固定的 TypeSafe HTTPS 接口；应用不持久保存、不写日志，也不随预测进度返回。刷新页面后需重新填写。不要把 Key 放进 Git、部署环境变量、URL 或公开前端代码。
+
+GitHub Pages 无法独立运行这套 Python API。若仅发布静态界面，仍需可访问的后端；TypeSafe 当前未允许来自本项目 GitHub Pages 域名的浏览器直连。
+
 ## 项目结构
 
 - `calculator.py`：本地服务、表达式解析、两种预测流程和真值对照。
+- `step_api.py`：请求校验、无状态逐轮计算和 BYOK 转发入口。
+- `api/`、`vercel.json`：Vercel 云函数入口与部署配置。
 - `typesafe_client.py`：独立 TypeSafe HTTP 客户端，不存储密钥。
 - `calculator_ui/`：原生 HTML、CSS、JavaScript 界面。
 - `test_*.py`：算法、边界、BYOK 和 HTTP 客户端测试，测试不调用收费 API。
 
-本项目为本地实验工具，绑定 `127.0.0.1`；不提供多人账户或公网部署配置。
+本地服务仅绑定 `127.0.0.1`；线上版本通过 Vercel 提供 HTTPS。两种运行方式均不提供账户、云端历史或共享密钥。

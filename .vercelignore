@@ -1,0 +1,12 @@
+.git
+.env
+.env.*
+.venv
+venv
+__pycache__
+*.pyc
+test_*.py
+.github
+.agents
+.codex
+node_modules

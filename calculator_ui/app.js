@@ -3,7 +3,7 @@ const places = ['个位', '十位', '百位', '千位', '万位', '十万位', '
 const placeName = (p) => places[p] || `10^${p} 位`;
 const percent = (p) => `${(p * 100).toFixed(1)}%`;
 let mode = 'choice', steps = [], selected = null, runId = null, busy = false, terminal = false;
-let apiKey = '';
+let apiKey = '', stopRequested = false;
 // Always start checked, including browsers that restore prior form values.
 $('include-context').checked = true;
 function updateKeyStatus() {
@@ -220,33 +220,45 @@ $('calculator-form').addEventListener('submit', async (e) => {
   e.preventDefault(); if (busy) return;
   const expression = $('expression').value.trim(); if (!expression) return;
   if (!apiKey) { openKeyDialog(); return; }
-  resetScreen(); runId = crypto.randomUUID();
+  resetScreen(); runId = crypto.randomUUID(); stopRequested = false;
   $('run-status').textContent = '正在连接 Jev…'; setBusy(true);
+  const input = { expression, mode, include_context: $('include-context').checked, upper: $('upper').value.trim() };
+  const started = performance.now();
   try {
-    const response = await fetch('/api/calculate', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify({ expression, run_id: runId, mode, include_context: $('include-context').checked, upper: $('upper').value.trim() }) });
-    if (!response.ok) throw new Error((await response.json()).error || '请求失败');
-    const reader = response.body.getReader(), decoder = new TextDecoder();
-    let buffer = '';
-    for (;;) {
-      const { value, done } = await reader.read();
-      buffer += decoder.decode(value, { stream: !done });
-      const lines = buffer.split('\n'); buffer = lines.pop();
-      for (const line of lines) if (line.trim()) handleEvent(JSON.parse(line));
-      if (done) break;
-    }
-    if (buffer.trim()) handleEvent(JSON.parse(buffer));
+    let cursor = null;
+    do {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 125000);
+      let data;
+      try {
+        const response = await fetch('/api/step', { method: 'POST', signal: controller.signal,
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({ ...input, cursor }) });
+        if (!(response.headers.get('content-type') || '').includes('application/json')) {
+          throw new Error('服务暂时不可用，请稍后重试。');
+        }
+        data = await response.json();
+        if (!response.ok) throw new Error(data.error || '请求失败');
+      } finally { clearTimeout(timeout); }
+      if (stopRequested) { handleEvent({ event: 'cancelled' }); break; }
+      if (!Array.isArray(data.events) || !Object.hasOwn(data, 'cursor')) throw new Error('服务返回了无效结果。');
+      for (const event of data.events) {
+        if (event.event === 'done') event.elapsed_ms = Math.round(performance.now() - started);
+        handleEvent(event);
+      }
+      cursor = data.cursor;
+    } while (cursor && !terminal);
     if (!terminal) throw new Error('连接中断，未收到完整结果。');
-  } catch (error) { handleEvent({ event: 'error', message: error.message }); }
-  finally { setBusy(false); runId = null; }
+  } catch (error) {
+    handleEvent(stopRequested ? { event: 'cancelled' } : { event: 'error',
+      message: error.name === 'AbortError' ? '本轮请求超时，请稍后重试。' : error.message });
+  } finally { setBusy(false); runId = null; }
 });
-$('stop').addEventListener('click', async () => {
+$('stop').addEventListener('click', () => {
   if (!runId) return;
+  stopRequested = true;
   $('stop').disabled = true;
   $('run-status').textContent = '正在停止，等待当前请求结束后不再发起下一次判断…';
-  try {
-    const response = await fetch('/api/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run_id: runId }) });
-    if (!response.ok) throw new Error('停止请求失败，请稍后重试。');
-  } catch (error) { showError(error.message); $('stop').disabled = false; }
 });
 ['choice', 'noul'].forEach((value) => $(`mode-${value}`).addEventListener('click', () => {
   if (busy || mode === value) return;
@@ -258,6 +270,6 @@ document.querySelectorAll('[data-example]').forEach((button) => button.addEventL
 }));
 fetch('/api/config').then((r) => {
   if (!r.ok) throw new Error('服务未连接');
-}).catch(() => { showError('无法连接本地服务，请重新启动 calculator.py。'); });
+}).catch(() => { showError('无法连接计算服务，请刷新页面或稍后重试。'); });
 updateKeyStatus();
 updateMode();
