@@ -97,7 +97,7 @@ function resetScreen() {
   $('actual').textContent = '—'; $('verdict').textContent = '待对比'; $('verdict').className = 'verdict';
   $('comparison-note').textContent = '整数按向零截断比较';
   $('prediction-note').textContent = '';
-  $('run-status').textContent = '准备就绪'; $('run-meta').textContent = mode.toUpperCase();
+  $('run-status').textContent = '准备好了，慢慢猜。'; $('run-meta').textContent = mode.toUpperCase();
   $('noul-stage').textContent = '当前候选区间'; $('noul-value').textContent = '—';
   renderSteps();
 }
@@ -162,7 +162,7 @@ function renderSteps() {
     const p = step.type === 'noul' ? step.decision_probability : step.probabilities[step.choice];
     row.append(node('span', 'step-probability', `P ${percent(p)}`), node('span', `step-verdict ${step.correct ? 'good' : 'bad'}`, step.first_error ? '首次错误' : step.correct ? '正确' : '错误'));
     return bindStep(row, step);
-  }) : [node('p', 'trace-empty', '等待开始计算')]));
+  }) : [node('p', 'trace-empty', '一次一次猜，弯路也记下来。')]));
   $('step-count').textContent = String(steps.length).padStart(2, '0');
 }
 function showError(message) { $('error').hidden = false; $('error').textContent = message; }
