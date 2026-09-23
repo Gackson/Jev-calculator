@@ -162,7 +162,7 @@ function renderSteps() {
     const p = step.type === 'noul' ? step.decision_probability : step.probabilities[step.choice];
     row.append(node('span', 'step-probability', `P ${percent(p)}`), node('span', `step-verdict ${step.correct ? 'good' : 'bad'}`, step.first_error ? '首次错误' : step.correct ? '正确' : '错误'));
     return bindStep(row, step);
-  }) : [node('p', 'trace-empty', '一次一次猜，弯路也记下来。')]));
+  }) : [node('p', 'trace-empty', 'Jev的每次判断记录在这里')]));
   $('step-count').textContent = String(steps.length).padStart(2, '0');
 }
 function showError(message) { $('error').hidden = false; $('error').textContent = message; }
@@ -175,7 +175,6 @@ function handleEvent(event) {
   } else if (['sign', 'digit', 'comparison', 'candidate'].includes(event.event)) {
     steps.push(event); renderSteps();
     if (selected === null || (event.event === 'digit' && steps.length === 2)) selectStep(event.judgment_index);
-    if (event.model) $('model').textContent = event.model.toUpperCase();
     $('run-meta').textContent = `${steps.length} 次判断`;
     if (event.event === 'digit') {
       $('run-status').textContent = event.choice === 'END' ? '已收到终止符，停止向左预测' : `已得到${placeName(event.position)}，正在判断${placeName(event.position + 1)}…`;
@@ -257,8 +256,8 @@ $('include-context').addEventListener('change', () => { updateMode(); resetScree
 document.querySelectorAll('[data-example]').forEach((button) => button.addEventListener('click', () => {
   $('expression').value = button.dataset.example; $('expression').focus();
 }));
-fetch('/api/config').then((r) => r.json()).then((config) => {
-  $('model').textContent = config.model.toUpperCase();
+fetch('/api/config').then((r) => {
+  if (!r.ok) throw new Error('服务未连接');
 }).catch(() => { showError('无法连接本地服务，请重新启动 calculator.py。'); });
 updateKeyStatus();
 updateMode();

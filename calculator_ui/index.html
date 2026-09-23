@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dumb Calculator · Jev</title>
-  <meta name="description" content="把简单的算术，郑重其事地猜一遍。用 Jev 逐位猜数字、反复猜大小，看它如何走向答案或第一次走错。">
+  <meta name="description" content="看看 Jev 能否用滑稽的方式预测出算式答案">
   <link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script>
 </head>
 <body>
   <main>
     <header><a class="brand" href="/" aria-label="Dumb Calculator 首页"><span class="brand-icon">j.</span> JEV <span class="brand-sub">/ DUMB CALCULATOR</span></a><button type="button" class="connection key-button" id="connection" aria-haspopup="dialog">设置 API Key</button></header>
     <dialog id="key-dialog" aria-labelledby="key-title" aria-describedby="key-note"><form id="key-form"><div class="section-top"><h2 id="key-title">使用自己的 API Key</h2><button type="button" id="key-close" class="key-close" aria-label="关闭 API 设置">×</button></div><label for="api-key">TypeSafe API Key</label><input id="api-key" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="2048" placeholder="粘贴你的 API Key"><p id="key-note">仅当前页面使用，刷新后清除。</p><p id="key-error" class="key-error" role="alert" hidden></p><div class="key-actions"><button type="button" id="key-clear" class="stop">清除</button><button type="submit" class="primary">使用此 Key</button></div></form></dialog>
-    <section class="intro"><h1>Dumb Calculator<span>.</span></h1><p class="tagline">把简单的算术，郑重其事地猜一遍。</p></section>
+    <section class="intro"><h1>Dumb Calculator<span>.</span></h1><p class="tagline">看看 Jev 能否用滑稽的方式预测出算式答案</p></section>
     <section class="input-panel" aria-label="输入算式">
       <div class="mode-controls"><div class="mode-switch" role="group" aria-label="计算模式"><button type="button" id="mode-choice" aria-pressed="true">Choice · 按位计算</button><button type="button" id="mode-noul" aria-pressed="false">Noul · 猜大小</button></div><p id="mode-description" class="mode-description" aria-live="polite">从个位向左逐位选择 0–9，遇到终止符即停止。</p></div>
       <form id="calculator-form"><label for="expression">输入整数算式</label><div class="input-row"><input id="expression" name="expression" value="128 + 357" placeholder="例如 (128 + 357) × 6" autocomplete="off" spellcheck="false" maxlength="300" required><button class="primary" id="submit" type="submit">开始计算 <span>↗</span></button><button class="stop" id="stop" type="button" hidden>停止</button></div></form>
-      <div class="settings-row"><label class="context-toggle" id="context-control"><input type="checkbox" id="include-context" checked><span>带入之前的预测结果</span></label>
+      <div class="settings-row"><label class="context-toggle" id="context-control"><input type="checkbox" id="include-context" checked><span>在每次预测时，带入之前位次的预测结果</span></label>
       <div class="range-control" id="range-control" hidden><label for="upper">绝对值范围：0 至</label><input id="upper" form="calculator-form" inputmode="numeric" pattern="[0-9]+" maxlength="25" value="1000" aria-describedby="range-help"><span id="range-help">上限须大于结果绝对值</span></div>
       <div class="examples"><button type="button" data-example="128 + 357">加法</button><button type="button" data-example="(48 + 27) * 16">混合运算</button><button type="button" data-example="100 / 7">除法</button><button type="button" data-example="23 - 108">负数</button></div></div>
     </section>
@@ -28,8 +28,8 @@
       </section>
       <aside class="inspector" aria-label="判断详情"><div class="section-top"><h2>判断显微镜</h2></div><div id="detail-empty" class="detail-empty"><div class="inspect-symbol">⌕</div><h3>点击数字或判断查看详情</h3></div><div id="detail" hidden><div class="detail-heading"><span id="detail-place"></span><strong id="detail-choice"></strong></div><p id="detail-question" class="detail-question"></p><div class="confidence"><span id="confidence-label">判断置信度</span><strong id="confidence"></strong></div><div class="top-label"><span>候选选项</span><span id="probability-label">概率 · TOP 3</span></div><div id="candidates"></div><p id="detail-correct" class="detail-correct"></p><p class="detail-footnote" id="detail-footnote"></p></div></aside>
     </div>
-    <section class="trace-section"><div class="trace-header"><h2>判断列表 <span id="step-count">00</span></h2></div><div id="trace" class="judgment-list"><p class="trace-empty">一次一次猜，弯路也记下来。</p></div></section>
-    <footer><span>POWERED BY TYPESAFE / <span id="model">JEV</span></span></footer>
+    <section class="trace-section"><div class="trace-header"><h2>判断列表 <span id="step-count">00</span></h2></div><div id="trace" class="judgment-list"><p class="trace-empty">Jev的每次判断记录在这里</p></div></section>
+    <footer><span>A SILLY EXPERIMENT MADE BY DULLBLADE</span><a class="github-link" href="https://github.com/Gackson" target="_blank" rel="noopener noreferrer" aria-label="访问 Dullblade 的 GitHub 主页" title="GitHub"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .297C5.37.297 0 5.67 0 12.297c0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.043-1.61-4.043-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.838 1.237 1.838 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.536-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.52 11.52 0 0 1 12 6.096c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.655 1.652.243 2.873.12 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.606-.015 2.898-.015 3.293 0 .322.216.694.825.576C20.565 22.092 24 17.597 24 12.297c0-6.627-5.373-12-12-12"/></svg></a></footer>
   </main>
 </body>
 </html>
