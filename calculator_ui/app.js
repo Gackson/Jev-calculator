@@ -345,9 +345,8 @@ const configReady = fetch('/api/config').then((r) => {
 updateKeyStatus();
 updateMode();
 
-$('language').value = locale;
-$('language').addEventListener('change', () => {
-  locale = $('language').value;
+function changeLanguage(value) {
+  locale = value;
   try { localStorage.setItem('jev-language', locale); } catch (_) { /* Storage may be disabled. */ }
   const previousSelection = selected;
   const hadError = !$('error').hidden, errorMessage = $('error').dataset.message;
@@ -362,6 +361,50 @@ $('language').addEventListener('change', () => {
     if (stopRequested && busy) { $('stop').disabled = true; $('run-status').textContent = t('正在停止，等待当前请求结束后不再发起下一次判断…'); }
     else if (busy && !history.length) $('run-status').textContent = t('正在连接 Jev…');
   } finally { replaying = false; }
+}
+
+const languageItems = [...document.querySelectorAll('[data-language]')];
+function updateLanguageMenu() {
+  languageItems.forEach((item) => item.setAttribute('aria-checked', String(item.dataset.language === locale)));
+}
+function closeLanguageMenu(restoreFocus = false) {
+  $('language-menu').hidden = true;
+  $('language').setAttribute('aria-expanded', 'false');
+  if (restoreFocus) $('language').focus();
+}
+function openLanguageMenu(index = languageItems.findIndex((item) => item.dataset.language === locale)) {
+  updateLanguageMenu();
+  $('language-menu').hidden = false;
+  $('language').setAttribute('aria-expanded', 'true');
+  languageItems[Math.max(0, index)].focus();
+}
+$('language').addEventListener('click', () => {
+  if ($('language-menu').hidden) openLanguageMenu();
+  else closeLanguageMenu(true);
 });
+$('language').addEventListener('keydown', (event) => {
+  if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+  event.preventDefault();
+  openLanguageMenu(event.key === 'ArrowDown' ? 0 : languageItems.length - 1);
+});
+languageItems.forEach((item) => item.addEventListener('click', () => {
+  if (locale !== item.dataset.language) changeLanguage(item.dataset.language);
+  updateLanguageMenu();
+  closeLanguageMenu(true);
+}));
+$('language-menu').addEventListener('keydown', (event) => {
+  const index = languageItems.indexOf(document.activeElement);
+  const next = {ArrowDown: (index + 1) % languageItems.length, ArrowUp: (index - 1 + languageItems.length) % languageItems.length, Home: 0, End: languageItems.length - 1}[event.key];
+  if (next !== undefined) { event.preventDefault(); languageItems[next].focus(); }
+  if (event.key === 'Escape') { event.preventDefault(); closeLanguageMenu(true); }
+});
+// Closing on focus departure preserves normal Tab navigation to the API button.
+$('language-picker').addEventListener('focusout', (event) => {
+  if (!$('language-picker').contains(event.relatedTarget)) closeLanguageMenu();
+});
+document.addEventListener('click', (event) => {
+  if (!$('language-picker').contains(event.target)) closeLanguageMenu();
+});
+updateLanguageMenu();
 translatePage();
 resetScreen();

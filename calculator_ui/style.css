@@ -37,7 +37,20 @@ footer{justify-content:flex-start;align-items:center;gap:14px}.github-link{displ
 @media(prefers-reduced-motion:reduce){.result-effect{display:none}.result-celebrate .prediction,.result-oops{animation:none}}
 
 /* Language and search controls stay compact, but can wrap on narrow screens. */
-.header-actions{display:flex;align-items:center;gap:12px}select{font:inherit;color:var(--ink);background:#fffefa;border:1px solid var(--line);border-radius:6px;padding:8px;max-width:140px}select:focus-visible{outline:3px solid var(--orange);outline-offset:3px}
+.header-actions{display:flex;align-items:center;gap:12px}
 .noul-settings{display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;flex:1}.strategy-switch{display:flex;flex-shrink:0;gap:3px;background:#efefe8;border-radius:6px;padding:3px}.strategy-switch button{border:0;border-radius:4px;background:transparent;color:var(--muted);padding:7px 10px;font-size:11px}.strategy-switch button[aria-pressed=true]{background:#fffefa;color:var(--ink);box-shadow:0 1px 4px #252c2710}.noul-settings .range-control{flex:1}.noul-settings .range-control input{width:110px}.judgment-list{position:relative}.candidate{grid-template-columns:minmax(55px,auto) minmax(35px,1fr) 46px}.detail-heading{gap:12px}.detail-heading>strong{font-size:clamp(18px,2vw,27px);overflow-wrap:anywhere;max-width:60%;text-align:right}.section-top{gap:10px}.tag{flex-shrink:0}.comparison-footer{flex-wrap:wrap}.step-verdict{overflow-wrap:anywhere}.run-bar>span{min-width:0;overflow-wrap:anywhere}#run-meta{text-align:right;flex-shrink:0}.mode-switch button{white-space:normal}.key-button{text-align:left}
 @media(max-width:1000px){.brand-sub{display:none}.mode-controls{align-items:flex-start;flex-direction:column}.judgment-row{grid-template-columns:28px minmax(0,1fr) minmax(60px,auto) 70px 80px}}
-@media(max-width:480px){header{gap:10px;height:auto;min-height:76px;padding:14px 0;flex-wrap:wrap}.header-actions{gap:8px;margin-left:auto}.brand{gap:7px}.header-actions select{max-width:108px;font-size:11px}.key-button{max-width:130px;font-size:10px;padding:8px}.noul-settings{gap:12px;flex-basis:100%}.noul-settings .range-control{flex-basis:100%}.judgment-row{grid-template-columns:22px minmax(0,1fr) minmax(65px,auto)}.run-bar{flex-wrap:wrap}.candidate{grid-template-columns:minmax(65px,auto) minmax(35px,1fr) 46px}.mode-switch button{min-width:0}.tag{max-width:50%;overflow-wrap:anywhere}.input-row .primary span{margin-left:15px}}
+@media(max-width:480px){header{gap:10px;height:auto;min-height:76px;padding:14px 0;flex-wrap:wrap}.header-actions{gap:8px;margin-left:auto}.brand{gap:7px}.key-button{max-width:130px;font-size:10px;padding:8px}.noul-settings{gap:12px;flex-basis:100%}.noul-settings .range-control{flex-basis:100%}.judgment-row{grid-template-columns:22px minmax(0,1fr) minmax(65px,auto)}.run-bar{flex-wrap:wrap}.candidate{grid-template-columns:minmax(65px,auto) minmax(35px,1fr) 46px}.mode-switch button{min-width:0}.tag{max-width:50%;overflow-wrap:anywhere}.input-row .primary span{margin-left:15px}}
+
+/* Shared header button treatment, with a paper-toned language menu. */
+.header-actions{align-items:stretch}.header-actions>.key-button{min-height:36px}
+.language-picker{position:relative;display:flex}
+.language-button{width:36px;min-height:36px;padding:8px;display:grid;place-items:center;flex-shrink:0}
+.language-button[aria-expanded=true]{background:#fffefa;border-color:#aaaf9f}
+.language-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:30;width:174px;max-width:calc(100vw - 32px);padding:5px;background:#fffefa;border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px #252c2714}
+.language-menu button{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-height:38px;padding:9px 11px;border:0;border-radius:5px;background:transparent;text-align:left;color:var(--ink);font-size:12px;line-height:1.5}
+.language-menu button:hover,.language-menu button:focus-visible{background:#efefe8;outline:none}
+.language-menu button[aria-checked=true]{color:var(--orange);background:#fff4e9}
+.language-menu button[aria-checked=true]::after{content:'✓';font-size:13px}
+.language-menu button[aria-checked=true]:focus-visible{outline:1px solid var(--orange);outline-offset:-1px}
+@media(max-width:480px){.language-menu button{min-height:42px}.language-button{padding:8px}}
