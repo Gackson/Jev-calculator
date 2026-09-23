@@ -93,7 +93,56 @@ function updateMode() {
     ? '随机取非答案数字猜大小，逐步缩小区间；剩余不足 5 项时逐项确认。'
     : '从个位向左逐位选择 0–9，遇到终止符即停止。';
 }
+// Decorative, one-shot feedback: no input blocking and no persistent particles.
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const resultCard = document.querySelector('.comparison');
+let resultEffect = null, resultEffectTimer = null;
+function clearResultEffect() {
+  clearTimeout(resultEffectTimer);
+  resultEffectTimer = null;
+  resultEffect?.remove();
+  resultEffect = null;
+  resultCard.classList.remove('result-celebrate', 'result-oops');
+}
+function playResultEffect(correct) {
+  clearResultEffect();
+  if (reducedMotion.matches || document.hidden) return;
+  resultCard.classList.add(correct ? 'result-celebrate' : 'result-oops');
+  const rect = resultCard.getBoundingClientRect();
+  const x = Math.max(30, Math.min(innerWidth - 30, rect.left + rect.width * .65));
+  const y = Math.max(90, Math.min(innerHeight - 100, rect.top + 75));
+  const layer = node('div', 'result-effect');
+  layer.setAttribute('aria-hidden', 'true');
+  const colors = ['#df633f', '#e5b83e', '#779d77', '#669bc1', '#ba83ae', '#e4a58b'];
+  const count = correct ? (innerWidth < 600 ? 30 : 48) : 3;
+  for (let i = 0; i < count; i++) {
+    const piece = node('span', correct ? 'confetti-piece' : 'oops-mark', correct ? '' : '?');
+    const dx = correct ? (Math.random() - .5) * Math.min(640, innerWidth * .85) : (i - 1) * 36;
+    piece.style.left = `${x}px`;
+    piece.style.top = `${y}px`;
+    piece.style.setProperty('--dx', `${dx}px`);
+    piece.style.setProperty('--peak-x', `${dx * .7}px`);
+    piece.style.setProperty('--rise', `${-(45 + Math.random() * (correct ? 125 : 25))}px`);
+    piece.style.setProperty('--fall', `${correct ? 170 + Math.random() * 160 : -25}px`);
+    piece.style.setProperty('--turn', `${correct ? (Math.random() - .5) * 900 : (i - 1) * 18}deg`);
+    piece.style.setProperty('--delay', `${i * (correct ? 3 : 80)}ms`);
+    if (correct) {
+      piece.style.backgroundColor = colors[i % colors.length];
+      piece.style.borderRadius = i % 3 === 0 ? '50%' : '1px';
+      piece.style.width = `${5 + Math.random() * 4}px`;
+      piece.style.height = `${8 + Math.random() * 6}px`;
+    }
+    layer.append(piece);
+  }
+  resultEffect = layer;
+  document.body.append(layer);
+  resultEffectTimer = setTimeout(clearResultEffect, correct ? 2000 : 1050);
+}
+reducedMotion.addEventListener('change', clearResultEffect);
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearResultEffect(); });
+
 function resetScreen() {
+  clearResultEffect();
   steps = []; selected = null; terminal = false;
   $('error').hidden = true; $('first-error').hidden = true;
   $('detail').hidden = true; $('detail-empty').hidden = false;
@@ -196,6 +245,7 @@ function handleEvent(event) {
       $('first-error').onclick = () => { selectStep(event.judgment_index); $('detail').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };
     }
   } else if (event.event === 'done') {
+    if (terminal) return;
     terminal = true;
     $('run-meta').textContent = `${event.judgments} 次判断 · ${(event.elapsed_ms / 1000).toFixed(2)} s · ${event.tokens} tokens`;
     if (event.status !== 'complete') {
@@ -210,6 +260,7 @@ function handleEvent(event) {
       $('verdict').className = `verdict ${event.match ? 'good' : 'bad'}`;
       $('prediction-note').textContent = `Jev 整数结果：${event.result} · ${event.first_error_index === null ? '所有判断均正确' : `首次错误在第 ${event.first_error_index} 步`}`;
       if (mode === 'noul') { $('noul-stage').textContent = 'JEV 最终整数'; $('noul-value').textContent = event.result; }
+      playResultEffect(event.match === true);
     }
   } else if (['error', 'limit', 'cancelled'].includes(event.event)) {
     terminal = true;

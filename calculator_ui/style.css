@@ -10,3 +10,28 @@
 .intro .tagline{margin:11px 0 0;font-size:14px;color:#777e71;line-height:1.7}
 
 footer{justify-content:flex-start;align-items:center;gap:14px}.github-link{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;color:#777e71;border-radius:5px;flex-shrink:0}.github-link:hover{color:var(--ink);background:#e9ebe2}@media(max-width:800px){footer{flex-direction:row;flex-wrap:wrap;gap:8px}}
+
+
+/* Brief result feedback; the overlay never intercepts a click or changes layout. */
+.result-effect{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:20}
+.confetti-piece,.oops-mark{position:absolute;display:block;opacity:0;animation-delay:var(--delay);animation-fill-mode:both}
+.confetti-piece{animation-name:confetti-flight;animation-duration:1700ms;animation-timing-function:linear}
+.oops-mark{font-family:var(--mono);font-size:27px;font-weight:600;color:#bd765b;animation-name:oops-float;animation-duration:800ms;animation-timing-function:cubic-bezier(.22,.61,.36,1)}
+.result-celebrate .prediction{animation:result-lift 300ms cubic-bezier(.22,.61,.36,1)}
+.result-oops{animation:result-shake 300ms ease-in-out}
+@keyframes confetti-flight{
+  0%{opacity:0;transform:translate3d(0,0,0) rotate(0deg)}
+  8%{opacity:1}
+  30%{opacity:1;transform:translate3d(var(--peak-x),var(--rise),0) rotate(calc(var(--turn) * .3))}
+  75%{opacity:1}
+  100%{opacity:0;transform:translate3d(var(--dx),var(--fall),0) rotate(var(--turn))}
+}
+@keyframes oops-float{
+  0%{opacity:0;transform:translate3d(0,0,0) rotate(0deg)}
+  25%{opacity:.85}
+  65%{opacity:.85;transform:translate3d(var(--dx),var(--rise),0) rotate(var(--turn))}
+  100%{opacity:0;transform:translate3d(var(--dx),var(--fall),0) rotate(var(--turn))}
+}
+@keyframes result-lift{0%,100%{transform:translateY(0)}45%{transform:translateY(-3px)}}
+@keyframes result-shake{0%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-4px) rotate(-.35deg)}55%{transform:translateX(4px) rotate(.35deg)}80%{transform:translateX(-2px) rotate(-.15deg)}}
+@media(prefers-reduced-motion:reduce){.result-effect{display:none}.result-celebrate .prediction,.result-oops{animation:none}}
