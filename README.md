@@ -23,7 +23,19 @@ https://jev-calculator-eta.vercel.app/
 python3 calculator.py
 ```
 
-打开 <http://127.0.0.1:8765>，点击右上角“设置 API Key”，填写自己的 TypeSafe API Key（BYOK）。支持替换和清除；Key 仅保留在当前页面内存，刷新后清除，不写入浏览器持久存储或文件。计算请求通过 Authorization 头交给本地后端，再由后端调用固定的 TypeSafe HTTPS 接口；后端不把 Key 保存在共享服务状态、不在响应中返回 Key，也不读取 `.env` 或环境变量作为备用密钥。
+打开 <http://127.0.0.1:8765>，点击右上角“设置 API Key”，填写自己的 TypeSafe API Key（BYOK）。支持替换和清除；Key 仅保留在当前页面内存，刷新后清除，不写入浏览器持久存储或文件。计算请求通过 Authorization 头交给本地后端，再由后端调用固定的 TypeSafe HTTPS 接口；页面填写的 Key 不在响应中返回，也不保存到后端共享状态。本地还支持环境 Key，优先级见下文。
+
+本地 Key 的优先级：**系统环境变量 `TYPESAFE_API_KEY` → 与 `calculator.py` 同目录的 `.env` → 页面 BYOK**。前两项都没有非空值时，才需要在页面填写。
+
+可在项目根目录创建 `.env`：
+
+```dotenv
+TYPESAFE_API_KEY=your-typesafe-api-key
+```
+
+支持引号、`export` 前缀和行尾注释；只读取 `TYPESAFE_API_KEY`，不执行文件内容或展开变量。启动时读取配置，修改后需重启本地服务。识别到环境 Key 时，页面显示“使用环境 Key”，Key 本身不传给浏览器；即使页面填写了另一把 Key，也优先使用环境 Key。环境 Key 格式错误或被 API 拒绝时会报错，不自动切换到页面 Key。
+
+`.env` 已被 Git 和 Vercel 上传规则排除，请勿提交真实 Key。Vercel 云函数仍只接受访客的 BYOK，不读取系统环境 Key 或 `.env`。
 
 可用 `--port 8766` 更换端口，或用 `--model jev-latest` 更换模型；默认模型为 `jev-1.13.0`。服务仅监听本机。“带入之前的预测结果”在页面初始化时默认选中，可手动关闭。
 
@@ -68,7 +80,7 @@ Key 输入兼容纯密钥、包裹引号、`Bearer ...` 和 `TYPESAFE_API_KEY=".
 
 在线版与本地版使用相同的逐轮接口 `/api/step`：每次最多调用一次 TypeSafe，浏览器保存临时预测进度并发起下一轮。云函数不保存跨请求状态，不依赖某台实例的内存，因此支持多个页面各自计算。点击停止后，当前请求最多完成一轮，后续调用不再发起。每轮上游请求超时为 90 秒，云函数时限为 120 秒。
 
-API Key 只在当前页面内存及当前请求处理期间使用，经同站云函数转发给固定的 TypeSafe HTTPS 接口；应用不持久保存、不写日志，也不随预测进度返回。刷新页面后需重新填写。不要把 Key 放进 Git、部署环境变量、URL 或公开前端代码。
+在线版 API Key 只在当前页面内存及当前请求处理期间使用，经同站云函数转发给固定的 TypeSafe HTTPS 接口；应用不持久保存、不写日志，也不随预测进度返回。刷新页面后需重新填写。不要把 Key 放进 Git、部署环境变量、URL 或公开前端代码。
 
 GitHub Pages 无法独立运行这套 Python API。若仅发布静态界面，仍需可访问的后端；TypeSafe 当前未允许来自本项目 GitHub Pages 域名的浏览器直连。
 

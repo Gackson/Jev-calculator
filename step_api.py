@@ -99,7 +99,7 @@ def reply(handler, status, data):
     handler.wfile.write(encoded)
 
 
-def handle_step(handler, model=MODEL):
+def handle_step(handler, model=MODEL, local_token=""):
     # Both production and previews use a same-origin UI; never an open CORS proxy.
     origin = handler.headers.get("Origin")
     host = handler.headers.get("Host", "")
@@ -108,7 +108,7 @@ def handle_step(handler, model=MODEL):
     if handler.headers.get("Content-Type", "").split(";")[0] != "application/json":
         return reply(handler, 415, {"error": "需要 JSON 请求。"})
     try:
-        token = request_api_key(handler.headers.get("Authorization"))
+        token = local_token or request_api_key(handler.headers.get("Authorization"))
     except ValueError as exc:
         return reply(handler, 401, {"error": str(exc)})
     try:
@@ -118,7 +118,7 @@ def handle_step(handler, model=MODEL):
         body = json.loads(handler.rfile.read(size))
         result = calculate_step(body, token, model)
     except ApiFailure as exc:
-        message = {"HTTP 401": "TypeSafe 拒绝了此 API Key（401）。请检查是否复制完整，或重新填写。",
+        message = {"HTTP 401": ("TypeSafe 拒绝了本地环境 Key（401）。请检查 TYPESAFE_API_KEY 或 .env，修改后重启本地服务。" if local_token else "TypeSafe 拒绝了此 API Key（401）。请检查是否复制完整，或重新填写。"),
                    "HTTP 403": "TypeSafe 拒绝访问（403）。请检查此 Key 的权限或账户状态。"}.get(
                        str(exc), "无法完成 TypeSafe 请求，请稍后重试。")
         return reply(handler, 502, {"error": message})

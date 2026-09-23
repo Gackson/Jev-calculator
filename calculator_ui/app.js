@@ -3,12 +3,12 @@ const places = ['个位', '十位', '百位', '千位', '万位', '十万位', '
 const placeName = (p) => places[p] || `10^${p} 位`;
 const percent = (p) => `${(p * 100).toFixed(1)}%`;
 let mode = 'choice', steps = [], selected = null, runId = null, busy = false, terminal = false;
-let apiKey = '', stopRequested = false;
+let apiKey = '', stopRequested = false, environmentKey = false;
 // Always start checked, including browsers that restore prior form values.
 $('include-context').checked = true;
 function updateKeyStatus() {
-  $('connection').textContent = apiKey ? 'API Key 已填写' : '设置 API Key';
-  $('connection').classList.toggle('ready', Boolean(apiKey));
+  $('connection').textContent = environmentKey ? '使用环境 Key' : apiKey ? 'API Key 已填写' : '设置 API Key';
+  $('connection').classList.toggle('ready', Boolean(environmentKey || apiKey));
 }
 function normalizeApiKey(value) {
   let key = value.trim();
@@ -22,6 +22,9 @@ function normalizeApiKey(value) {
   return key;
 }
 function openKeyDialog() {
+  $('key-note').textContent = environmentKey
+    ? '当前优先使用本地环境 Key。移除环境配置并重启服务后，可使用页面填写的 Key。'
+    : '仅当前页面使用，刷新后清除。';
   $('api-key').value = '';
   $('api-key').placeholder = apiKey ? '已填写，输入新 Key 可替换' : '粘贴你的 API Key';
   $('key-error').hidden = true;
@@ -219,7 +222,8 @@ function handleEvent(event) {
 $('calculator-form').addEventListener('submit', async (e) => {
   e.preventDefault(); if (busy) return;
   const expression = $('expression').value.trim(); if (!expression) return;
-  if (!apiKey) { openKeyDialog(); return; }
+  if (!await configReady || busy) return;
+  if (!environmentKey && !apiKey) { openKeyDialog(); return; }
   resetScreen(); runId = crypto.randomUUID(); stopRequested = false;
   $('run-status').textContent = '正在连接 Jev…'; setBusy(true);
   const input = { expression, mode, include_context: $('include-context').checked, upper: $('upper').value.trim() };
@@ -232,7 +236,7 @@ $('calculator-form').addEventListener('submit', async (e) => {
       let data;
       try {
         const response = await fetch('/api/step', { method: 'POST', signal: controller.signal,
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          headers: { 'Content-Type': 'application/json', ...(!environmentKey && apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}) },
           body: JSON.stringify({ ...input, cursor }) });
         if (!(response.headers.get('content-type') || '').includes('application/json')) {
           throw new Error('服务暂时不可用，请稍后重试。');
@@ -268,8 +272,13 @@ $('include-context').addEventListener('change', () => { updateMode(); resetScree
 document.querySelectorAll('[data-example]').forEach((button) => button.addEventListener('click', () => {
   $('expression').value = button.dataset.example; $('expression').focus();
 }));
-fetch('/api/config').then((r) => {
+const configReady = fetch('/api/config').then((r) => {
   if (!r.ok) throw new Error('服务未连接');
-}).catch(() => { showError('无法连接计算服务，请刷新页面或稍后重试。'); });
+  return r.json();
+}).then((config) => {
+  environmentKey = config.auth_mode === 'environment';
+  updateKeyStatus();
+  return true;
+}).catch(() => { showError('无法连接计算服务，请刷新页面或稍后重试。'); return false; });
 updateKeyStatus();
 updateMode();

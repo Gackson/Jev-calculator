@@ -6,6 +6,8 @@ from fractions import Fraction
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import math
+import os
+import shlex
 from pathlib import Path
 import re
 import random
@@ -326,12 +328,41 @@ def request_api_key(authorization):
     return normalize_api_key(authorization[7:])
 
 
+def local_api_key(env=None, dotenv_path=None):
+    """Called only by the local CLI: process environment > project .env > BYOK."""
+    env = os.environ if env is None else env
+    value = env.get("TYPESAFE_API_KEY", "").strip()
+    if value:
+        return normalize_api_key(value)
+    path = ROOT / ".env" if dotenv_path is None else Path(dotenv_path)
+    try:
+        content = path.read_text(encoding="utf-8-sig")
+    except FileNotFoundError:
+        return ""
+    except (OSError, UnicodeError):
+        raise ValueError("无法读取项目 .env 文件，请检查文件权限和编码。") from None
+    value = ""
+    for line in content.splitlines():
+        match = re.match(r"^\s*(?:export\s+)?TYPESAFE_API_KEY\s*=\s*(.*)$", line)
+        if not match:
+            continue
+        try:
+            parts = shlex.split(match[1], comments=True, posix=True)
+        except ValueError:
+            raise ValueError(".env 中的 TYPESAFE_API_KEY 格式不正确，请检查引号。") from None
+        if len(parts) > 1:
+            raise ValueError(".env 中的 TYPESAFE_API_KEY 格式不正确。")
+        value = parts[0] if parts else ""
+    return normalize_api_key(value) if value.strip() else ""
+
+
 class CalculatorServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, address, model):
+    def __init__(self, address, model, local_key=""):
         super().__init__(address, Handler)
         self.model = model
+        self.local_key = local_key
         self.runs = {}
         self.run_lock = threading.Lock()
 
@@ -354,7 +385,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/api/config":
-            return self.json_response(200, {"model": self.server.model, "auth_mode": "byok", "max_digits": MAX_DIGITS})
+            return self.json_response(200, {"model": self.server.model, "auth_mode": "environment" if getattr(self.server, "local_key", "") else "byok", "max_digits": MAX_DIGITS})
         routes = {"/": ("index.html", "text/html"), "/app.js": ("app.js", "text/javascript"), "/style.css": ("style.css", "text/css")}
         if self.path not in routes:
             return self.json_response(404, {"error": "页面不存在。"})
@@ -365,7 +396,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path == "/api/step":
             from step_api import handle_step
-            return handle_step(self, self.server.model)
+            return handle_step(self, self.server.model, local_token=getattr(self.server, "local_key", ""))
         # Browser requests must originate from this exact local page.
         origin = self.headers.get("Origin")
         expected = f"http://{self.headers.get('Host')}"
@@ -402,7 +433,7 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, TypeError, RecursionError) as exc:
             return self.json_response(400, {"error": str(exc)})
         try:
-            token = request_api_key(self.headers.get("Authorization"))
+            token = getattr(self.server, "local_key", "") or request_api_key(self.headers.get("Authorization"))
         except ValueError as exc:
             return self.json_response(401, {"error": str(exc)})
         event = threading.Event()
@@ -446,7 +477,11 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--model", default="jev-1.13.0")
     args = parser.parse_args()
-    server = CalculatorServer(("127.0.0.1", args.port), args.model)
+    try:
+        key = local_api_key()
+    except ValueError as exc:
+        parser.error(str(exc))
+    server = CalculatorServer(("127.0.0.1", args.port), args.model, local_key=key)
     print(f"Jev calculator: http://127.0.0.1:{args.port}", flush=True)
     try:
         server.serve_forever()
