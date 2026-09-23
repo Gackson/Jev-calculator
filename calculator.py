@@ -181,10 +181,21 @@ def random_candidate(low, high, target, rng):
     return value + int(excludes and value >= target)
 
 
-def predict_noul(expression, model, token, cancelled, upper, target, call=None, rng=None, max_steps=128, resume=None, single_step=False):
+def comparison_candidate(low, high, target, rng, strategy="random"):
+    if strategy == "random":
+        return random_candidate(low, high, target, rng)
+    # Called only for ranges with at least five entries. Moving one place right
+    # stays in range and avoids giving the answer away in a comparison question.
+    midpoint = (low + high) // 2
+    return midpoint + int(midpoint == target)
+
+
+def predict_noul(expression, model, token, cancelled, upper, target, call=None, rng=None, max_steps=128, resume=None, single_step=False, strategy="random"):
     """Truth is used only to exclude pivots, never to repair model decisions."""
     if call is None:
         call = lambda payload: system_one(token, payload)
+    if strategy not in ("random", "binary"):
+        raise ValueError("未知取数方式。")
     rng = rng or random.SystemRandom()
     state = resume or {}
     low, high = int(state.get("low", 0)), int(state.get("high", upper))
@@ -223,7 +234,7 @@ def predict_noul(expression, model, token, cancelled, upper, target, call=None, 
         if count >= max_steps:
             yield {"event": "limit", "message": f"已达到 {max_steps} 次区间判断上限，停止本次测试。"}
             return
-        candidate = random_candidate(low, high, abs(target), rng)
+        candidate = comparison_candidate(low, high, abs(target), rng, strategy)
         questions = {"larger": {"type": "noul", "instructions": ARITHMETIC +
             "Consider the absolute value of that integer. Is `candidate` STRICTLY GREATER than that absolute value?",
             "criteria": {"true": "The candidate is too large.", "false": "The candidate is not greater."}}}
@@ -240,7 +251,7 @@ def predict_noul(expression, model, token, cancelled, upper, target, call=None, 
         else:
             low = candidate + 1
         count += 1
-        yield {"event": "comparison", "candidate": str(candidate), "before": before,
+        yield {"event": "comparison", "strategy": strategy, "candidate": str(candidate), "before": before,
                "after": [str(low), str(high)], "choice": "大了" if decision["yes"] else "小了",
                **metadata, **decision}
         if single_step:
@@ -386,7 +397,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/config":
             return self.json_response(200, {"model": self.server.model, "auth_mode": "environment" if getattr(self.server, "local_key", "") else "byok", "max_digits": MAX_DIGITS})
-        routes = {"/": ("index.html", "text/html"), "/app.js": ("app.js", "text/javascript"), "/style.css": ("style.css", "text/css")}
+        routes = {"/": ("index.html", "text/html"), "/app.js": ("app.js", "text/javascript"), "/i18n.js": ("i18n.js", "text/javascript"), "/style.css": ("style.css", "text/css")}
         if self.path not in routes:
             return self.json_response(404, {"error": "页面不存在。"})
         filename, kind = routes[self.path]
@@ -426,6 +437,9 @@ class Handler(BaseHTTPRequestHandler):
             mode = body.get("mode", "choice")
             if mode not in ("choice", "noul"):
                 raise ValueError("未知计算模式。")
+            strategy = body.get("strategy", "random")
+            if strategy not in ("random", "binary"):
+                raise ValueError("未知取数方式。")
             include_context = body.get("include_context", True)
             if type(include_context) is not bool:
                 raise ValueError("context 开关必须为布尔值。")
@@ -448,9 +462,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.flush()
             emit({"event": "start", "expression": expression, "actual": fixed_two(actual),
                   "integer_target": str(int(actual)), "max_digits": MAX_DIGITS, "mode": mode,
-                  "include_context": include_context, "upper": str(upper) if upper is not None else None})
+                  "include_context": include_context, "strategy": strategy, "upper": str(upper) if upper is not None else None})
             try:
-                events = (predict_noul(expression, self.server.model, token, event, upper, int(actual))
+                events = (predict_noul(expression, self.server.model, token, event, upper, int(actual), strategy=strategy)
                           if mode == "noul" else predict(expression, self.server.model, token, event,
                                                         include_context=include_context))
                 for item in audit_judgments(events, int(actual)):

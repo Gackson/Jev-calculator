@@ -113,6 +113,50 @@ class StepTests(unittest.TestCase):
                         self.assertNotEqual(int(payload['state']['candidate']), abs(target))
                     self.assertNotIn('target', payload['state'])
 
+    def test_binary_search_midpoint_exclusion_and_convergence(self):
+        for target, upper in [(100, 200), (0, 200), (-99, 200), (199, 200),
+                              (1, 3), (2, 4), (10**23, 10**24)]:
+            with self.subTest(target=target, upper=upper):
+                rng = Mock()
+                call = self.noul_call(target)
+                events, rounds = self.run_steps({'expression': str(target), 'mode': 'noul',
+                    'upper': str(upper), 'strategy': 'binary'}, call, rng)
+                self.assertTrue(events[-1]['match'])
+                self.assertEqual(events[-1]['first_error_index'], None)
+                self.assertLessEqual(rounds, upper.bit_length() + 1)
+                rng.randrange.assert_not_called()
+                for event in events:
+                    if event['event'] == 'comparison':
+                        low, high = map(int, event['before'])
+                        midpoint = (low + high) // 2
+                        self.assertEqual(int(event['candidate']), midpoint + int(midpoint == abs(target)))
+                        self.assertNotEqual(int(event['candidate']), abs(target))
+                        self.assertEqual(event['strategy'], 'binary')
+                    elif event['event'] == 'candidate':
+                        self.assertLess(int(event['before'][1]) - int(event['before'][0]) + 1, 5)
+                for payload in call.calls:
+                    self.assertNotIn('target', payload['state'])
+                    self.assertNotIn('integer_target', payload['state'])
+
+    def test_binary_errors_do_not_repair_model_path(self):
+        events, _ = self.run_steps({'expression': '100', 'mode': 'noul', 'upper': '200',
+            'strategy': 'binary'}, self.noul_call(100, wrong_comparison=True))
+        comparison = next(e for e in events if e['event'] == 'comparison')
+        self.assertEqual(comparison['candidate'], '101')
+        self.assertEqual(comparison['after'], ['102', '200'])
+        self.assertTrue(comparison['first_error'])
+        self.assertEqual(events[-1]['first_error_index'], 2)
+        self.assertFalse(events[-1]['match'])
+
+    def test_strategy_cannot_change_mid_run(self):
+        body = {'expression': '100', 'mode': 'noul', 'upper': '200', 'strategy': 'binary'}
+        cursor = calculate_step(body, '', call=self.noul_call(100))['cursor']
+        for value in ('random', 'unsupported', None, []):
+            call = Mock()
+            with self.assertRaises(ValueError):
+                calculate_step({**body, 'strategy': value, 'cursor': cursor}, '', call=call)
+            call.assert_not_called()
+
     def test_invalid_cursor_and_inputs_never_call_upstream(self):
         body = {'expression': '102'}
         cursor = calculate_step(body, '', call=self.choice_call(['2']))['cursor']

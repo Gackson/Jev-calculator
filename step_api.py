@@ -61,9 +61,12 @@ def calculate_step(body, token, model=MODEL, call=None, rng=None):
     context = body.get("include_context", True)
     if mode not in ("choice", "noul") or type(context) is not bool:
         raise ValueError("计算模式或 context 开关无效。")
+    strategy = body.get("strategy", "random")
+    if strategy not in ("random", "binary"):
+        raise ValueError("未知取数方式。")
     upper = parse_range(body.get("upper"), actual) if mode == "noul" else None
     identity = {"expression": expression, "mode": mode, "include_context": context,
-                "upper": str(upper) if upper is not None else None}
+                "upper": str(upper) if upper is not None else None, "strategy": strategy}
     cursor = body.get("cursor")
     state, index, first = (None, 0, None) if cursor is None else validate_cursor(cursor, identity, upper)
     target = int(actual)
@@ -73,7 +76,7 @@ def calculate_step(body, token, model=MODEL, call=None, rng=None):
                        "integer_target": str(target), "max_digits": MAX_DIGITS})
     cancelled = threading.Event()
     stream = (predict_noul(expression, model, token, cancelled, upper, target, call=call, rng=rng,
-                           resume=state, single_step=True) if mode == "noul" else
+                           resume=state, single_step=True, strategy=strategy) if mode == "noul" else
               predict(expression, model, token, cancelled, call=call, include_context=context,
                       resume=state, single_step=True))
     next_cursor = None

@@ -1,13 +1,14 @@
 const $ = (id) => document.getElementById(id);
 const places = ['个位', '十位', '百位', '千位', '万位', '十万位', '百万位', '千万位', '亿位'];
-const placeName = (p) => places[p] || `10^${p} 位`;
-const percent = (p) => `${(p * 100).toFixed(1)}%`;
+const placeName = (p) => t(places[p]) || t('10^{p} 位', {p});
+const percent = (p) => new Intl.NumberFormat(locale, {style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1}).format(p);
+let strategy = 'random', eventHistory = [], replaying = false;
 let mode = 'choice', steps = [], selected = null, runId = null, busy = false, terminal = false;
 let apiKey = '', stopRequested = false, environmentKey = false;
 // Always start checked, including browsers that restore prior form values.
 $('include-context').checked = true;
 function updateKeyStatus() {
-  $('connection').textContent = environmentKey ? '使用环境 Key' : apiKey ? 'API Key 已填写' : '设置 API Key';
+  $('connection').textContent = environmentKey ? t('使用环境 Key') : apiKey ? t('API Key 已填写') : t('设置 API Key');
   $('connection').classList.toggle('ready', Boolean(environmentKey || apiKey));
 }
 function normalizeApiKey(value) {
@@ -23,10 +24,10 @@ function normalizeApiKey(value) {
 }
 function openKeyDialog() {
   $('key-note').textContent = environmentKey
-    ? '当前优先使用本地环境 Key。移除环境配置并重启服务后，可使用页面填写的 Key。'
-    : '仅当前页面使用，刷新后清除。';
+    ? t('当前优先使用本地环境 Key。移除环境配置并重启服务后，可使用页面填写的 Key。')
+    : t('仅当前页面使用，刷新后清除。');
   $('api-key').value = '';
-  $('api-key').placeholder = apiKey ? '已填写，输入新 Key 可替换' : '粘贴你的 API Key';
+  $('api-key').placeholder = apiKey ? t('已填写，输入新 Key 可替换') : t('粘贴你的 API Key');
   $('key-error').hidden = true;
   $('key-clear').disabled = !apiKey;
   $('key-dialog').showModal();
@@ -40,7 +41,7 @@ $('key-form').addEventListener('submit', (event) => {
   const value = normalizeApiKey($('api-key').value);
   if (!value && apiKey) { $('key-dialog').close(); return; }
   if (!/^[\x21-\x7e]{1,2048}$/.test(value)) {
-    $('key-error').textContent = '请输入有效的 API Key，不含空格或换行。';
+    $('key-error').textContent = t('请输入有效的 API Key，不含空格或换行。');
     $('key-error').hidden = false;
     return;
   }
@@ -57,41 +58,42 @@ function node(tag, className, text) {
   if (text !== undefined) el.textContent = text;
   return el;
 }
-function optionLabel(value) { return value === 'negative' ? '负数' : value === 'positive' ? '非负数' : value; }
+function optionLabel(value) { return value === 'negative' ? t('负数') : value === 'positive' ? t('非负数') : t(value); }
 function title(step) {
-  if (step.event === 'sign') return '符号判断';
-  if (step.event === 'digit') return `${placeName(step.position)}判断`;
-  if (step.event === 'comparison') return `随机数 ${step.candidate}`;
-  return `候选 ${step.candidate}`;
+  if (step.event === 'sign') return t('符号判断');
+  if (step.event === 'digit') return t('{place}判断', {place: placeName(step.position)});
+  if (step.event === 'comparison') return `${step.strategy === 'binary' ? t('二分法') : t('随机数')} ${step.candidate}`;
+  return t('候选 {n}', {n: step.candidate});
 }
 function question(step) {
-  if (step.event === 'sign') return '向零截断后的整数是否为负数？';
-  if (step.event === 'digit') return `绝对值的${placeName(step.position)}是哪一位数字，还是已经结束？`;
-  if (step.event === 'comparison') return `${step.candidate} 是否大于结果的绝对值？`;
-  return `${step.candidate} 是否等于结果的绝对值？`;
+  if (step.event === 'sign') return t('向零截断后的整数是否为负数？');
+  if (step.event === 'digit') return t('绝对值的{place}是哪一位数字，还是已经结束？', {place: placeName(step.position)});
+  if (step.event === 'comparison') return t('{n} 是否大于结果的绝对值？', {n: step.candidate});
+  return t('{n} 是否等于结果的绝对值？', {n: step.candidate});
 }
 function setBusy(value) {
   busy = value;
   document.body.classList.toggle('busy', value);
   $('submit').disabled = value;
-  $('submit').replaceChildren(document.createTextNode(value ? '预测中' : '开始计算'), node('span', '', value ? '…' : '↗'));
+  $('submit').replaceChildren(document.createTextNode(value ? t('预测中') : t('开始计算')), node('span', '', value ? '…' : '↗'));
   $('stop').hidden = !value; $('stop').disabled = false;
-  ['expression', 'include-context', 'mode-choice', 'mode-noul', 'connection'].forEach((id) => { $(id).disabled = value; });
+  ['expression', 'include-context', 'mode-choice', 'mode-noul', 'connection', 'strategy-binary', 'strategy-random'].forEach((id) => { $(id).disabled = value; });
   $('upper').disabled = value || mode !== 'noul';
   document.querySelectorAll('[data-example]').forEach((button) => { button.disabled = value; });
 }
 function updateMode() {
   const isNoul = mode === 'noul';
+  ['binary', 'random'].forEach((value) => $(`strategy-${value}`).setAttribute('aria-pressed', String(strategy === value)));
   $('mode-choice').setAttribute('aria-pressed', String(!isNoul));
   $('mode-noul').setAttribute('aria-pressed', String(isNoul));
   $('context-control').hidden = isNoul; $('range-control').hidden = !isNoul;
   $('upper').required = isNoul;
   $('upper').disabled = busy || !isNoul;
   $('digits').hidden = isNoul; $('noul-display').hidden = !isNoul;
-  $('mode-tag').textContent = `${mode.toUpperCase()} / 整数`;
+  $('mode-tag').textContent = t('{mode} / 整数', {mode: mode.toUpperCase()});
   $('mode-description').textContent = isNoul
-    ? '随机取非答案数字猜大小，逐步缩小区间；剩余不足 5 项时逐项确认。'
-    : '从个位向左逐位选择 0–9，遇到终止符即停止。';
+    ? (strategy === 'binary' ? t('取区间中点猜大小；中点为答案时改取相邻数，剩余不足 5 项时逐项确认。') : t('随机取非答案数字猜大小，逐步缩小区间；剩余不足 5 项时逐项确认。'))
+    : t('从个位向左逐位选择 0–9，遇到终止符即停止。');
 }
 // Decorative, one-shot feedback: no input blocking and no persistent particles.
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -106,7 +108,7 @@ function clearResultEffect() {
 }
 function playResultEffect(correct) {
   clearResultEffect();
-  if (reducedMotion.matches || document.hidden) return;
+  if (replaying || reducedMotion.matches || document.hidden) return;
   resultCard.classList.add(correct ? 'result-celebrate' : 'result-oops');
   const rect = resultCard.getBoundingClientRect();
   const x = Math.max(30, Math.min(innerWidth - 30, rect.left + rect.width * .65));
@@ -143,14 +145,15 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) clear
 
 function resetScreen() {
   clearResultEffect();
+  if (!replaying) eventHistory = [];
   steps = []; selected = null; terminal = false;
   $('error').hidden = true; $('first-error').hidden = true;
   $('detail').hidden = true; $('detail-empty').hidden = false;
-  $('actual').textContent = '—'; $('verdict').textContent = '待对比'; $('verdict').className = 'verdict';
-  $('comparison-note').textContent = '整数按向零截断比较';
+  $('actual').textContent = '—'; $('verdict').textContent = t('待对比'); $('verdict').className = 'verdict';
+  $('comparison-note').textContent = t('整数按向零截断比较');
   $('prediction-note').textContent = '';
-  $('run-status').textContent = '准备好了，慢慢猜。'; $('run-meta').textContent = mode.toUpperCase();
-  $('noul-stage').textContent = '当前候选区间'; $('noul-value').textContent = '—';
+  $('run-status').textContent = t('准备好了，慢慢猜。'); $('run-meta').textContent = mode.toUpperCase();
+  $('noul-stage').textContent = t('当前候选区间'); $('noul-value').textContent = '—';
   renderSteps();
 }
 function selectStep(key) {
@@ -159,12 +162,12 @@ function selectStep(key) {
   if (!step) return;
   const noul = step.type === 'noul';
   $('detail-empty').hidden = true; $('detail').hidden = false;
-  $('detail-place').textContent = `第 ${key} 步 · ${title(step)}`;
+  $('detail-place').textContent = t('第 {n} 步 · {title}', {n: key, title: title(step)});
   $('detail-choice').textContent = optionLabel(step.choice);
   $('detail-question').textContent = question(step);
-  $('confidence-label').textContent = noul ? '所选判断概率' : '判断置信度';
+  $('confidence-label').textContent = noul ? t('所选判断概率') : t('判断置信度');
   $('confidence').textContent = percent(noul ? step.decision_probability : step.confidence);
-  $('probability-label').textContent = noul ? 'NOUL · 是 / 否' : '概率 · TOP 3';
+  $('probability-label').textContent = noul ? t('NOUL · 是 / 否') : t('概率 · TOP 3');
   const options = noul ? [{ option: '是', probability: step.noul }, { option: '否', probability: 1 - step.noul }] : step.top_three;
   $('candidates').replaceChildren(...options.map(({ option, probability }) => {
     const row = node('div', 'candidate'), bar = node('div', 'bar'), fill = node('div', 'fill');
@@ -172,9 +175,9 @@ function selectStep(key) {
     row.append(node('span', '', optionLabel(option)), bar, node('span', 'prob', percent(probability)));
     return row;
   }));
-  $('detail-correct').textContent = `${step.first_error ? '首次错误 · ' : ''}${step.correct ? '判断正确' : '判断错误'} · 正确选项：${optionLabel(step.expected)}`;
+  $('detail-correct').textContent = `${step.first_error ? t('首次错误') + ' · ' : ''}${step.correct ? t('判断正确') : t('判断错误')} · ${t('正确选项：{option}', {option: optionLabel(step.expected)})}`;
   $('detail-correct').className = `detail-correct ${step.correct ? 'good' : 'bad'}`;
-  $('detail-footnote').textContent = noul ? `Noul 无独立置信度；概率 ≥ 50% 判为“是”。` : '置信度不等于正确率。';
+  $('detail-footnote').textContent = noul ? t('Noul 无独立置信度；概率 ≥ 50% 判为“是”。') : t('置信度不等于正确率。');
   document.querySelectorAll('[data-step]').forEach((button) => {
     const active = button.dataset.step === String(key);
     button.classList.toggle('selected', active); button.setAttribute('aria-pressed', String(active));
@@ -182,7 +185,7 @@ function selectStep(key) {
 }
 function bindStep(button, step) {
   button.type = 'button'; button.dataset.step = step.judgment_index;
-  button.setAttribute('aria-label', `第 ${step.judgment_index} 步 ${title(step)} ${optionLabel(step.choice)}，查看详情`);
+  button.setAttribute('aria-label', t('第 {n} 步 {title} {choice}，查看详情', {n: step.judgment_index, title: title(step), choice: optionLabel(step.choice)}));
   button.setAttribute('aria-pressed', String(selected === step.judgment_index));
   if (selected === step.judgment_index) button.classList.add('selected');
   if (step.first_error) button.classList.add('first-wrong');
@@ -193,7 +196,7 @@ function digitButton(step) {
   const sign = step.event === 'sign';
   const value = sign ? '−' : step.choice;
   const button = node('button', `digit${step.choice === 'END' ? ' end' : ''}${sign ? ' sign' : ''}`);
-  button.append(node('span', 'number', value), node('small', '', sign ? '符号' : step.choice === 'END' ? '终止' : placeName(step.position)));
+  button.append(node('span', 'number', value), node('small', '', sign ? t('符号') : step.choice === 'END' ? t('终止') : placeName(step.position)));
   return bindStep(button, step);
 }
 function renderSteps() {
@@ -208,65 +211,69 @@ function renderSteps() {
     row.append(node('span', 'step-index', String(step.judgment_index).padStart(2, '0')));
     const description = node('span', 'step-description');
     description.append(node('strong', '', title(step)));
-    const range = step.after ? `${step.before.join('–')} → ${BigInt(step.after[0]) > BigInt(step.after[1]) ? '空区间' : step.after.join('–')}` : step.event === 'candidate' ? '逐项确认最终候选' : step.event === 'sign' ? '独立判断正负' : `从右向左 · 第 ${step.position + 1} 位`;
+    const range = step.after ? `${step.before.join('–')} → ${BigInt(step.after[0]) > BigInt(step.after[1]) ? t('空区间') : step.after.join('–')}` : step.event === 'candidate' ? t('逐项确认最终候选') : step.event === 'sign' ? t('独立判断正负') : t('从右向左 · 第 {n} 位', {n: step.position + 1});
     description.append(node('small', '', range));
     row.append(description, node('span', 'step-answer', optionLabel(step.choice)));
     const p = step.type === 'noul' ? step.decision_probability : step.probabilities[step.choice];
-    row.append(node('span', 'step-probability', `P ${percent(p)}`), node('span', `step-verdict ${step.correct ? 'good' : 'bad'}`, step.first_error ? '首次错误' : step.correct ? '正确' : '错误'));
+    row.append(node('span', 'step-probability', `P ${percent(p)}`), node('span', `step-verdict ${step.correct ? 'good' : 'bad'}`, step.first_error ? t('首次错误') : step.correct ? t('正确') : t('错误')));
     return bindStep(row, step);
-  }) : [node('p', 'trace-empty', 'Jev的每次判断记录在这里')]));
+  }) : [node('p', 'trace-empty', t('Jev的每次判断记录在这里'))]));
   $('step-count').textContent = String(steps.length).padStart(2, '0');
 }
-function showError(message) { $('error').hidden = false; $('error').textContent = message; }
+function showError(message) { $('error').hidden = false; $('error').dataset.message = message; $('error').textContent = errorText(message); }
 function handleEvent(event) {
+  if (!replaying) eventHistory.push(event);
   if (event.event === 'start') {
     $('actual').textContent = event.actual;
-    $('comparison-note').textContent = `对照整数：${event.integer_target}`;
-    $('run-status').textContent = mode === 'noul' ? '正在判断随机数与结果符号…' : '正在判断个位与结果符号…';
+    $('comparison-note').textContent = t('对照整数：{n}', {n: event.integer_target});
+    $('run-status').textContent = mode === 'noul' ? t('正在判断候选数与结果符号…') : t('正在判断个位与结果符号…');
     if (mode === 'noul') $('noul-value').textContent = `0–${event.upper}`;
   } else if (['sign', 'digit', 'comparison', 'candidate'].includes(event.event)) {
     steps.push(event); renderSteps();
-    if (selected === null || (event.event === 'digit' && steps.length === 2)) selectStep(event.judgment_index);
-    $('run-meta').textContent = `${steps.length} 次判断`;
+    selectStep(event.judgment_index);
+    if (!replaying) {
+      $('trace').scrollTop = $('trace').scrollHeight;
+    }
+    $('run-meta').textContent = t('{n} 次判断', {n: steps.length});
     if (event.event === 'digit') {
-      $('run-status').textContent = event.choice === 'END' ? '已收到终止符，停止向左预测' : `已得到${placeName(event.position)}，正在判断${placeName(event.position + 1)}…`;
+      $('run-status').textContent = event.choice === 'END' ? t('已收到终止符，停止向左预测') : t('已得到{place}，正在判断{next}…', {place: placeName(event.position), next: placeName(event.position + 1)});
     } else if (event.event === 'comparison') {
       const empty = BigInt(event.after[0]) > BigInt(event.after[1]);
-      $('noul-value').textContent = empty ? '空区间' : event.after.join('–');
-      $('run-status').textContent = `${event.candidate} → Jev 判断${event.choice}，${empty ? '无剩余候选' : '继续缩小范围'}…`;
+      $('noul-value').textContent = empty ? t('空区间') : event.after.join('–');
+      $('run-status').textContent = t('{n} → Jev 判断{choice}，{next}…', {n: event.candidate, choice: optionLabel(event.choice), next: empty ? t('无剩余候选') : t('继续缩小范围')});
     } else if (event.event === 'candidate') {
-      $('noul-stage').textContent = '逐项确认候选';
-      $('run-status').textContent = `候选 ${event.candidate} → ${event.choice}`;
+      $('noul-stage').textContent = t('逐项确认候选');
+      $('run-status').textContent = t('候选 {n} → {choice}', {n: event.candidate, choice: optionLabel(event.choice)});
     }
     $('prediction-note').textContent = '';
     if (event.first_error) {
       $('first-error').hidden = false;
-      $('first-error').textContent = `首次错误：第 ${event.judgment_index} 步 · ${title(event)} · 点击查看 →`;
+      $('first-error').textContent = t('首次错误：第 {n} 步 · {title} · 点击查看 →', {n: event.judgment_index, title: title(event)});
       $('first-error').onclick = () => { selectStep(event.judgment_index); $('detail').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };
     }
   } else if (event.event === 'done') {
     if (terminal) return;
     terminal = true;
-    $('run-meta').textContent = `${event.judgments} 次判断 · ${(event.elapsed_ms / 1000).toFixed(2)} s · ${event.tokens} tokens`;
+    $('run-meta').textContent = `${t('{n} 次判断', {n: event.judgments})} · ${(event.elapsed_ms / 1000).toFixed(2)} s · ${event.tokens} tokens`;
     if (event.status !== 'complete') {
-      const message = event.status === 'empty' ? 'Jev 在个位提前终止，未产生整数结果' : event.status === 'ambiguous' ? `多个候选被判为“是”：${event.accepted.join('、')}` : '没有候选被判为“是”，无法确定答案';
-      $('run-status').textContent = '判断结束 · 无唯一有效结果';
-      $('verdict').textContent = '无有效结果'; $('verdict').className = 'verdict bad';
+      const message = event.status === 'empty' ? t('Jev 在个位提前终止，未产生整数结果') : event.status === 'ambiguous' ? t('多个候选被判为“是”：{values}', {values: event.accepted.join(', ')}) : t('没有候选被判为“是”，无法确定答案');
+      $('run-status').textContent = t('判断结束 · 无唯一有效结果');
+      $('verdict').textContent = t('无有效结果'); $('verdict').className = 'verdict bad';
       $('prediction-note').textContent = message;
-      if (mode === 'noul') { $('noul-stage').textContent = '无法确定唯一答案'; $('noul-value').textContent = '—'; }
+      if (mode === 'noul') { $('noul-stage').textContent = t('无法确定唯一答案'); $('noul-value').textContent = '—'; }
     } else {
-      $('run-status').textContent = mode === 'noul' ? '判断完成 · 已检查所有最终候选' : '预测完成 · 已由终止符结束';
-      $('verdict').textContent = event.match ? '整数一致' : '结果不同';
+      $('run-status').textContent = mode === 'noul' ? t('判断完成 · 已检查所有最终候选') : t('预测完成 · 已由终止符结束');
+      $('verdict').textContent = event.match ? t('整数一致') : t('结果不同');
       $('verdict').className = `verdict ${event.match ? 'good' : 'bad'}`;
-      $('prediction-note').textContent = `Jev 整数结果：${event.result} · ${event.first_error_index === null ? '所有判断均正确' : `首次错误在第 ${event.first_error_index} 步`}`;
-      if (mode === 'noul') { $('noul-stage').textContent = 'JEV 最终整数'; $('noul-value').textContent = event.result; }
+      $('prediction-note').textContent = t('Jev 整数结果：{n} · {audit}', {n: event.result, audit: event.first_error_index === null ? t('所有判断均正确') : t('首次错误在第 {n} 步', {n: event.first_error_index})});
+      if (mode === 'noul') { $('noul-stage').textContent = t('JEV 最终整数'); $('noul-value').textContent = event.result; }
       playResultEffect(event.match === true);
     }
   } else if (['error', 'limit', 'cancelled'].includes(event.event)) {
     terminal = true;
-    $('run-status').textContent = event.event === 'cancelled' ? '测试已停止' : '预测未完成';
-    $('prediction-note').textContent = '未完成，已保留现有判断。';
-    $('verdict').textContent = '未完成'; $('verdict').className = 'verdict bad';
+    $('run-status').textContent = event.event === 'cancelled' ? t('测试已停止') : t('预测未完成');
+    $('prediction-note').textContent = t('未完成，已保留现有判断。');
+    $('verdict').textContent = t('未完成'); $('verdict').className = 'verdict bad';
     if (event.message) showError(event.message);
   }
 }
@@ -276,8 +283,8 @@ $('calculator-form').addEventListener('submit', async (e) => {
   if (!await configReady || busy) return;
   if (!environmentKey && !apiKey) { openKeyDialog(); return; }
   resetScreen(); runId = crypto.randomUUID(); stopRequested = false;
-  $('run-status').textContent = '正在连接 Jev…'; setBusy(true);
-  const input = { expression, mode, include_context: $('include-context').checked, upper: $('upper').value.trim() };
+  $('run-status').textContent = t('正在连接 Jev…'); setBusy(true);
+  const input = { expression, mode, strategy, include_context: $('include-context').checked, upper: $('upper').value.trim() };
   const started = performance.now();
   try {
     let cursor = null;
@@ -306,18 +313,22 @@ $('calculator-form').addEventListener('submit', async (e) => {
     if (!terminal) throw new Error('连接中断，未收到完整结果。');
   } catch (error) {
     handleEvent(stopRequested ? { event: 'cancelled' } : { event: 'error',
-      message: error.name === 'AbortError' ? '本轮请求超时，请稍后重试。' : error.message });
+      message: error.name === 'AbortError' ? '本轮请求超时，请稍后重试。' : error instanceof TypeError ? '网络连接失败，请检查网络后重试。' : error.message });
   } finally { setBusy(false); runId = null; }
 });
 $('stop').addEventListener('click', () => {
   if (!runId) return;
   stopRequested = true;
   $('stop').disabled = true;
-  $('run-status').textContent = '正在停止，等待当前请求结束后不再发起下一次判断…';
+  $('run-status').textContent = t('正在停止，等待当前请求结束后不再发起下一次判断…');
 });
 ['choice', 'noul'].forEach((value) => $(`mode-${value}`).addEventListener('click', () => {
   if (busy || mode === value) return;
   mode = value; updateMode(); resetScreen();
+}));
+['binary', 'random'].forEach((value) => $(`strategy-${value}`).addEventListener('click', () => {
+  if (busy || strategy === value) return;
+  strategy = value; updateMode(); resetScreen();
 }));
 $('include-context').addEventListener('change', () => { updateMode(); resetScreen(); });
 document.querySelectorAll('[data-example]').forEach((button) => button.addEventListener('click', () => {
@@ -333,3 +344,24 @@ const configReady = fetch('/api/config').then((r) => {
 }).catch(() => { showError('无法连接计算服务，请刷新页面或稍后重试。'); return false; });
 updateKeyStatus();
 updateMode();
+
+$('language').value = locale;
+$('language').addEventListener('change', () => {
+  locale = $('language').value;
+  try { localStorage.setItem('jev-language', locale); } catch (_) { /* Storage may be disabled. */ }
+  const previousSelection = selected;
+  const hadError = !$('error').hidden, errorMessage = $('error').dataset.message;
+  const history = eventHistory.slice();
+  replaying = true;
+  try {
+    translatePage(); updateKeyStatus(); updateMode(); resetScreen();
+    history.forEach(handleEvent);
+    if (previousSelection !== null) selectStep(previousSelection);
+    if (hadError) showError(errorMessage);
+    setBusy(busy);
+    if (stopRequested && busy) { $('stop').disabled = true; $('run-status').textContent = t('正在停止，等待当前请求结束后不再发起下一次判断…'); }
+    else if (busy && !history.length) $('run-status').textContent = t('正在连接 Jev…');
+  } finally { replaying = false; }
+});
+translatePage();
+resetScreen();
