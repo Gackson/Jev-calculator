@@ -15,6 +15,14 @@ Dumb Calculator 是由 TypeSafe Jev 模型驱动的一个笨拙的计算器：�
 
 https://jev-calculator-eta.vercel.app/
 
+## 获取 TypeSafe API Key
+
+1. 打开 [TypeSafe API Keys 控制台](https://console.typesafe.ai/keys)，使用 Google 或邮箱注册／登录。
+2. 在 API Keys 页面创建并复制自己的 API Key。
+3. 回到计算器，点击右上角“设置 API Key”并粘贴；本地运行也可写入 `.env` 的 `TYPESAFE_API_KEY`，配置方法见下文。
+
+只复制密钥本身，不要把整段示例代码一起粘贴。更多信息见 [TypeSafe 官方快速开始](https://docs.typesafe.ai/introduction/quickstart)。
+
 ## 本地运行
 
 运行（Python 3.9+，无需安装额外依赖）：
