@@ -11,7 +11,9 @@ Dumb Calculator 是由 TypeSafe Jev 模型驱动的一个笨拙的计算器：�
 
 使用 BYOK 模式，输入自己的 API Key 就能开始使用。每步的判断概率、真实结果，以及第一次判断错误的位置都会展示在页面上。
 
-## 运行
+在线体验：https://jev-calculator-eta.vercel.app/
+
+## 本地运行
 
 运行（Python 3.9+，无需安装额外依赖）：
 
