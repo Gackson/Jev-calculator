@@ -140,20 +140,6 @@ const messages = {
     "es": "Elige dígitos del 0 al 9 de derecha a izquierda; termina con END.",
     "ko": "일의 자리부터 왼쪽으로 0–9를 고르고 END에서 멈춥니다."
   },
-  "随机取非答案数字猜大小，逐步缩小区间；剩余不足 5 项时逐项确认。": {
-    "zh-TW": "隨機取非答案數字猜大小，逐步縮小區間；剩餘不足 5 項時逐項確認。",
-    "en": "Compare a random non-answer to narrow the range. With fewer than 5 candidates, check each one.",
-    "ja": "正解以外の乱数と比較して範囲を絞り、候補が 5 個未満になったら一つずつ確認します。",
-    "es": "Compara un número aleatorio distinto de la respuesta para acotar el rango. Con menos de 5 candidatos, comprueba cada uno.",
-    "ko": "정답이 아닌 난수와 비교해 범위를 좁힙니다. 후보가 5개 미만이면 하나씩 확인합니다."
-  },
-  "取区间中点猜大小；中点为答案时改取相邻数，剩余不足 5 项时逐项确认。": {
-    "zh-TW": "取區間中點猜大小；中點為答案時改取相鄰數，剩餘不足 5 項時逐項確認。",
-    "en": "Compare the midpoint (a neighbor if it is the answer). With fewer than 5 candidates, check each one.",
-    "ja": "範囲の中点と比較します。中点が正解なら隣の数を使い、候補が 5 個未満で個別に確認します。",
-    "es": "Compara el punto medio (un vecino si es la respuesta). Con menos de 5 candidatos, comprueba cada uno.",
-    "ko": "범위의 중간값과 비교합니다. 정답이면 이웃한 수를 쓰고, 후보가 5개 미만이면 하나씩 확인합니다."
-  },
   "输入整数算式": {
     "zh-TW": "輸入整數算式",
     "en": "Enter an integer expression",
@@ -189,33 +175,12 @@ const messages = {
     "es": "Incluir los dígitos ya predichos en cada predicción",
     "ko": "매 예측에 이전 자릿수의 예측 결과 포함"
   },
-  "绝对值范围：0 至": {
-    "zh-TW": "絕對值範圍：0 至",
-    "en": "Magnitude range: 0 to",
-    "ja": "絶対値の範囲：0 ～",
-    "es": "Rango absoluto: de 0 a",
-    "ko": "절댓값 범위: 0부터"
-  },
-  "上限须大于结果绝对值": {
-    "zh-TW": "上限須大於結果絕對值",
-    "en": "Limit must exceed the absolute result",
-    "ja": "上限は結果の絶対値より大きくしてください",
-    "es": "El límite debe superar el valor absoluto del resultado",
-    "ko": "상한은 결과의 절댓값보다 커야 합니다"
-  },
   "取数方式": {
     "zh-TW": "取數方式",
     "en": "Number selection",
     "ja": "数の選び方",
     "es": "Selección del número",
     "ko": "숫자 선택 방식"
-  },
-  "二分法": {
-    "zh-TW": "二分法",
-    "en": "Binary search",
-    "ja": "二分探索",
-    "es": "Bisección",
-    "ko": "이진 탐색"
   },
   "随机数": {
     "zh-TW": "隨機數",
@@ -300,13 +265,6 @@ const messages = {
     "ja": "{mode} / 整数",
     "es": "{mode} / ENTERO",
     "ko": "{mode} / 정수"
-  },
-  "当前候选区间": {
-    "zh-TW": "目前候選區間",
-    "en": "Current candidate range",
-    "ja": "現在の候補範囲",
-    "es": "Rango de candidatos actual",
-    "ko": "현재 후보 범위"
   },
   "真实结果": {
     "zh-TW": "真實結果",
@@ -490,13 +448,6 @@ const messages = {
     "es": "Dígito: {place}",
     "ko": "{place} 판단"
   },
-  "候选 {n}": {
-    "zh-TW": "候選 {n}",
-    "en": "Candidate {n}",
-    "ja": "候補 {n}",
-    "es": "Candidato {n}",
-    "ko": "후보 {n}"
-  },
   "向零截断后的整数是否为负数？": {
     "zh-TW": "朝零截斷後的整數是否為負數？",
     "en": "Is the integer negative after truncation toward zero?",
@@ -637,13 +588,6 @@ const messages = {
     "es": "Rango vacío",
     "ko": "빈 범위"
   },
-  "逐项确认最终候选": {
-    "zh-TW": "逐項確認最終候選",
-    "en": "Check each final candidate",
-    "ja": "最終候補を一つずつ確認",
-    "es": "Comprobar cada candidato final",
-    "ko": "최종 후보 개별 확인"
-  },
   "独立判断正负": {
     "zh-TW": "獨立判斷正負",
     "en": "Determine the sign separately",
@@ -679,13 +623,6 @@ const messages = {
     "es": "Entero de referencia: {n}",
     "ko": "비교할 정수: {n}"
   },
-  "正在判断候选数与结果符号…": {
-    "zh-TW": "正在判斷候選數與結果符號…",
-    "en": "Judging the candidate and result sign…",
-    "ja": "候補の数と結果の符号を判断中…",
-    "es": "Evaluando el candidato y el signo del resultado…",
-    "ko": "후보 숫자와 결과 부호 판단 중…"
-  },
   "正在判断个位与结果符号…": {
     "zh-TW": "正在判斷個位與結果符號…",
     "en": "Predicting the ones digit and result sign…",
@@ -714,13 +651,6 @@ const messages = {
     "es": "Obtenido: {place}; prediciendo: {next}…",
     "ko": "{place} 예측 완료, {next} 판단 중…"
   },
-  "无剩余候选": {
-    "zh-TW": "無剩餘候選",
-    "en": "no candidates remain",
-    "ja": "候補なし",
-    "es": "no quedan candidatos",
-    "ko": "남은 후보 없음"
-  },
   "继续缩小范围": {
     "zh-TW": "繼續縮小範圍",
     "en": "narrowing the range",
@@ -735,20 +665,6 @@ const messages = {
     "es": "{n} → Jev dice {choice}; {next}…",
     "ko": "{n} → Jev 판단: {choice}, {next}…"
   },
-  "逐项确认候选": {
-    "zh-TW": "逐項確認候選",
-    "en": "Checking candidates individually",
-    "ja": "候補を個別に確認",
-    "es": "Comprobando cada candidato",
-    "ko": "후보 개별 확인 중"
-  },
-  "候选 {n} → {choice}": {
-    "zh-TW": "候選 {n} → {choice}",
-    "en": "Candidate {n} → {choice}",
-    "ja": "候補 {n} → {choice}",
-    "es": "Candidato {n} → {choice}",
-    "ko": "후보 {n} → {choice}"
-  },
   "首次错误：第 {n} 步 · {title} · 点击查看 →": {
     "zh-TW": "首次錯誤：第 {n} 步 · {title} · 點擊查看 →",
     "en": "First error: step {n} · {title} · View →",
@@ -762,20 +678,6 @@ const messages = {
     "ja": "Jev が一の位で終了し、整数を生成できませんでした",
     "es": "Jev se detuvo en las unidades sin producir un entero",
     "ko": "Jev가 일의 자리에서 종료해 정수 결과가 없습니다"
-  },
-  "多个候选被判为“是”：{values}": {
-    "zh-TW": "多個候選被判為「是」：{values}",
-    "en": "Multiple candidates received “Yes”: {values}",
-    "ja": "複数の候補が「はい」：{values}",
-    "es": "Varios candidatos recibieron «Sí»: {values}",
-    "ko": "여러 후보가 ‘예’로 판단됨: {values}"
-  },
-  "没有候选被判为“是”，无法确定答案": {
-    "zh-TW": "沒有候選被判為「是」，無法確定答案",
-    "en": "No candidate received “Yes”; no answer found",
-    "ja": "「はい」の候補がなく、答えを特定できません",
-    "es": "Ningún candidato recibió «Sí»; no se pudo determinar la respuesta",
-    "ko": "‘예’로 판단된 후보가 없어 답을 정할 수 없습니다"
   },
   "判断结束 · 无唯一有效结果": {
     "zh-TW": "判斷結束 · 無唯一有效結果",
@@ -797,13 +699,6 @@ const messages = {
     "ja": "答えを一つに特定できません",
     "es": "Sin respuesta única",
     "ko": "답을 하나로 정할 수 없음"
-  },
-  "判断完成 · 已检查所有最终候选": {
-    "zh-TW": "判斷完成 · 已檢查所有最終候選",
-    "en": "Done · All final candidates checked",
-    "ja": "完了 · 最終候補をすべて確認済み",
-    "es": "Completado · Todos los candidatos finales comprobados",
-    "ko": "완료 · 최종 후보 모두 확인됨"
   },
   "预测完成 · 已由终止符结束": {
     "zh-TW": "預測完成 · 已由終止符結束",
@@ -987,13 +882,6 @@ const messages = {
     "es": "No se pudo completar la solicitud a TypeSafe. Inténtalo más tarde.",
     "ko": "TypeSafe 요청을 완료하지 못했습니다. 나중에 다시 시도하세요."
   },
-  "算式、范围或预测进度无效，请检查输入后重新计算。": {
-    "zh-TW": "算式、範圍或預測進度無效，請檢查輸入後重新計算。",
-    "en": "Invalid expression, range or progress. Check your input and start again.",
-    "ja": "式、範囲、または予測の進行状態が無効です。入力を確認してやり直してください。",
-    "es": "Operación, rango o progreso inválidos. Revisa los datos y vuelve a calcular.",
-    "ko": "수식, 범위 또는 진행 상태가 유효하지 않습니다. 입력을 확인하고 다시 계산하세요."
-  },
   "本轮预测未完成，请稍后重试。": {
     "zh-TW": "本輪預測未完成，請稍後重試。",
     "en": "This prediction did not finish. Try again later.",
@@ -1022,13 +910,6 @@ const messages = {
     "es": "Se predijeron {n} dígitos sin END en el siguiente. Se detuvo sin un resultado completo.",
     "ko": "{n}자리를 예측했지만 다음 자리에도 END가 없어 중지했습니다. 완성된 결과가 없습니다."
   },
-  "已达到 {n} 次区间判断上限，停止本次测试。": {
-    "zh-TW": "已達到 {n} 次區間判斷上限，停止本次測試。",
-    "en": "Reached the limit of {n} range judgments. Run stopped.",
-    "ja": "範囲判断の上限 {n} 回に達したため停止しました。",
-    "es": "Se alcanzó el límite de {n} juicios de rango. Prueba detenida.",
-    "ko": "구간 판단 상한 {n}회에 도달하여 중지했습니다."
-  },
   "网络连接失败，请检查网络后重试。": {
     "zh-TW": "網路連線失敗，請檢查網路後重試。",
     "en": "Network connection failed. Check your connection and try again.",
@@ -1042,6 +923,97 @@ const messages = {
     "ja": "言語 / Language",
     "es": "Idioma / Language",
     "ko": "언어 / Language"
+  },
+  "从 0、1、2 开始，倍增寻找上界；区间内随机取数，先问是不是，再问大小。": {
+    "zh-TW": "從 0、1、2 開始，倍增尋找上界；區間內隨機取數，先問是不是，再問大小。",
+    "en": "Start at 0, 1, 2, then double to find an upper bound. Pick randomly within the range; check equality before size.",
+    "ja": "0・1・2 から始め、倍増して上限を探します。範囲内でランダムに選び、一致するか確認してから大小を比較します。",
+    "es": "Empieza por 0, 1, 2 y duplica hasta hallar el límite superior. Elige al azar en el intervalo; comprueba igualdad y luego tamaño.",
+    "ko": "0, 1, 2부터 시작해 두 배씩 늘리며 상한을 찾습니다. 구간에서 무작위로 고르고, 같은지 먼저 확인한 뒤 크기를 비교합니다."
+  },
+  "从 0、1、2 开始，倍增寻找上界；区间内取中位数，先问是不是，再问大小。": {
+    "zh-TW": "從 0、1、2 開始，倍增尋找上界；區間內取中位數，先問是不是，再問大小。",
+    "en": "Start at 0, 1, 2, then double to find an upper bound. Pick the midpoint; check equality before size.",
+    "ja": "0・1・2 から始め、倍増して上限を探します。範囲の中央を選び、一致するか確認してから大小を比較します。",
+    "es": "Empieza por 0, 1, 2 y duplica hasta hallar el límite superior. Elige el punto medio; comprueba igualdad y luego tamaño.",
+    "ko": "0, 1, 2부터 시작해 두 배씩 늘리며 상한을 찾습니다. 구간의 중간값을 고르고, 같은지 먼저 확인한 뒤 크기를 비교합니다."
+  },
+  "中位数": {
+    "zh-TW": "中位數",
+    "en": "Midpoint",
+    "ja": "中央値",
+    "es": "Punto medio",
+    "ko": "중간값"
+  },
+  "当前搜索区间": {
+    "zh-TW": "目前搜尋區間",
+    "en": "Current search range",
+    "ja": "現在の探索範囲",
+    "es": "Intervalo de búsqueda actual",
+    "ko": "현재 탐색 구간"
+  },
+  "相等判断 {n}": {
+    "zh-TW": "相等判斷 {n}",
+    "en": "Equality check {n}",
+    "ja": "一致判定 {n}",
+    "es": "Igualdad con {n}",
+    "ko": "같음 판단 {n}"
+  },
+  "大小判断 {n}": {
+    "zh-TW": "大小判斷 {n}",
+    "en": "Size check {n}",
+    "ja": "大小判定 {n}",
+    "es": "Comparación con {n}",
+    "ko": "크기 판단 {n}"
+  },
+  "正在判断是否为 0 与结果符号…": {
+    "zh-TW": "正在判斷是否為 0 與結果符號…",
+    "en": "Checking for zero and the result sign…",
+    "ja": "0 かどうかと結果の符号を判定中…",
+    "es": "Comprobando si es 0 y el signo…",
+    "ko": "0인지와 결과의 부호를 판단하는 중…"
+  },
+  "正在寻找上界": {
+    "zh-TW": "正在尋找上界",
+    "en": "Finding an upper bound",
+    "ja": "上限を探索中",
+    "es": "Buscando el límite superior",
+    "ko": "상한 탐색 중"
+  },
+  "继续寻找上界": {
+    "zh-TW": "繼續尋找上界",
+    "en": "continue finding an upper bound",
+    "ja": "上限の探索を続行",
+    "es": "seguir buscando el límite superior",
+    "ko": "상한 탐색 계속"
+  },
+  "判断产生空区间，无法确定答案": {
+    "zh-TW": "判斷產生空區間，無法確定答案",
+    "en": "The judgments left an empty range; no answer found",
+    "ja": "判定により範囲が空になり、答えを確定できません",
+    "es": "Las decisiones dejaron un intervalo vacío; no se encontró respuesta",
+    "ko": "판단 결과 구간이 비어 답을 정할 수 없습니다"
+  },
+  "判断完成 · 已确认答案": {
+    "zh-TW": "判斷完成 · 已確認答案",
+    "en": "Done · Answer confirmed",
+    "ja": "判定完了 · 答えを確認",
+    "es": "Finalizado · Respuesta confirmada",
+    "ko": "판단 완료 · 답 확인됨"
+  },
+  "已达到 {n} 次数字判断上限，停止本次测试。": {
+    "zh-TW": "已達到 {n} 次數字判斷上限，停止本次測試。",
+    "en": "Stopped after the limit of {n} number judgments.",
+    "ja": "数値判定の上限 {n} 回に達したため停止しました。",
+    "es": "Se detuvo tras alcanzar el límite de {n} decisiones numéricas.",
+    "ko": "숫자 판단 한도 {n}회에 도달하여 중지했습니다."
+  },
+  "算式或预测进度无效，请检查输入后重新计算。": {
+    "zh-TW": "算式或預測進度無效，請檢查輸入後重新計算。",
+    "en": "Invalid expression or progress. Check your input and start again.",
+    "ja": "式または予測の進行状態が無効です。入力を確認してやり直してください。",
+    "es": "Operación o progreso inválidos. Revisa los datos y vuelve a calcular.",
+    "ko": "수식 또는 진행 상태가 유효하지 않습니다. 입력을 확인하고 다시 계산하세요."
   }
 };
 Object.assign(messages, {
@@ -1573,6 +1545,29 @@ Object.assign(messages, {
     "ko": "Jev가 한 글자씩 답해 드려요"
   }
 });
+Object.assign(messages, {
+  "· 全局 prompt": {
+    "zh-TW": "· 全域 prompt",
+    "en": "· Global prompt",
+    "ja": "· 共通プロンプト",
+    "es": "· Prompt global",
+    "ko": "· 공통 프롬프트"
+  },
+  "给 Jev 一点鼓励，或者试试你的神奇 prompt…": {
+    "zh-TW": "給 Jev 一點鼓勵，或者試試你的神奇 prompt…",
+    "en": "Encourage Jev, or try your magic prompt…",
+    "ja": "Jev を応援したり、とっておきのプロンプトを試したり…",
+    "es": "Anima a Jev o prueba tu prompt mágico…",
+    "ko": "Jev를 응원하거나 특별한 프롬프트를 써 보세요…"
+  },
+  "每次判断都会带上这段话。想写什么都可以，留空也没关系。": {
+    "zh-TW": "每次判斷都會帶上這段話。想寫什麼都可以，留空也沒關係。",
+    "en": "Included with every judgment. Write anything you like, or leave it blank.",
+    "ja": "毎回の判断にこのメモを添えます。自由に入力できます。空欄でも大丈夫。",
+    "es": "Se incluye en cada decisión. Escribe lo que quieras o déjalo vacío.",
+    "ko": "매 판단에 이 내용을 함께 보내요. 자유롭게 쓰거나 비워 두세요."
+  }
+});
 const supportedLanguages = ['zh-CN', 'zh-TW', 'en', 'ja', 'es', 'ko'];
 function initialLanguage() {
   try { const saved = localStorage.getItem('jev-language'); if (supportedLanguages.includes(saved)) return saved; } catch (_) {}
@@ -1616,7 +1611,7 @@ function translatePage() {
 function errorText(message) {
   const limits = [
     [/^已预测 (\d+) 位，下一位仍未返回终止符。已停止，本次没有完整结果。$/, '已预测 {n} 位，下一位仍未返回终止符。已停止，本次没有完整结果。'],
-    [/^已达到 (\d+) 次区间判断上限，停止本次测试。$/, '已达到 {n} 次区间判断上限，停止本次测试。']
+    [/^已达到 (\d+) 次数字判断上限，停止本次测试。$/, '已达到 {n} 次数字判断上限，停止本次测试。']
   ];
   for (const [pattern, key] of limits) {
     const match = String(message).match(pattern);

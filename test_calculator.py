@@ -3,8 +3,8 @@ import threading
 import unittest
 from fractions import Fraction
 
-from calculator import (DIGITS, SIGN, audit_judgments, evaluate, fixed_two, parse_range,
-                        predict, predict_noul, random_candidate, validate_choice, validate_noul)
+from calculator import (DIGITS, SIGN, audit_judgments, evaluate, fixed_two, MAX_NOUL_STEPS,
+                        predict, predict_noul, validate_choice, validate_noul)
 import random
 import io
 from types import SimpleNamespace
@@ -126,92 +126,113 @@ class CalculatorTests(unittest.TestCase):
 
 
 class NoulTests(unittest.TestCase):
-    def run_model(self, target=100, upper=200, wrong_at=None, equals=None, max_steps=128):
+    def run_model(self, target=100, wrong_at=None, equals=None, max_steps=MAX_NOUL_STEPS,
+                  strategy="binary", rng=None):
         calls = []
         comparisons = 0
         def call(payload):
             nonlocal comparisons
             calls.append(json.loads(json.dumps(payload)))
             answers = {}
+            guess = int(payload["state"]["guess"])
             for key, question in payload["questions"].items():
                 self.assertEqual(question["type"], "noul")
                 if key == "sign":
                     yes = target < 0
                 elif key == "larger":
                     comparisons += 1
-                    candidate = int(payload["state"]["candidate"])
-                    self.assertNotEqual(candidate, abs(target))
-                    yes = candidate > abs(target)
+                    yes = guess > abs(target)
                     if comparisons == wrong_at:
                         yes = not yes
                 else:
-                    candidate = int(question["instructions"].split("equal to ")[1].split("?")[0])
-                    yes = candidate == abs(target) if equals is None else candidate in equals
+                    self.assertEqual(key, "equal")
+                    yes = guess == abs(target) if equals is None else guess in equals
                 answers[key] = {"type": "noul", "noul": .9 if yes else .1}
             return {"model": "jev-test", "answers": answers, "usage": {"input_tokens": 1, "output_tokens": 2}}
-        events = list(audit_judgments(predict_noul("50+50", "jev-test", "", threading.Event(),
-                         upper, target, call, random.Random(7), max_steps), target))
+        events = list(audit_judgments(predict_noul(str(target), "jev-test", "", threading.Event(),
+                         call=call, rng=rng or random.Random(7), max_steps=max_steps, strategy=strategy), target))
         return events, calls
 
-    def test_range_must_exceed_actual_absolute_value(self):
-        for value in ["100", "99", "-1", "1.5", "", "1e4", 200, "1" * 26]:
-            with self.subTest(value=value), self.assertRaises(ValueError):
-                parse_range(value, Fraction(-100))
-        self.assertEqual(parse_range("101", Fraction(-100)), 101)
-        with self.assertRaises(ValueError):
-            parse_range("100", Fraction(201, 2))
+    def test_zero_one_two_only_check_equality(self):
+        for target in (0, 1, 2):
+            events, calls = self.run_model(target)
+            self.assertEqual([p["state"]["guess"] for p in calls], [str(n) for n in range(target + 1)])
+            self.assertEqual(set(calls[0]["questions"]), {"equal", "sign"})
+            self.assertTrue(all(set(p["questions"]) == {"equal"} for p in calls[1:]))
+            self.assertEqual(events[-1]["result"], str(target))
+            self.assertEqual(events[-1]["judgments"], target + 2)  # includes independent sign
 
-    def test_uniform_candidate_mapping_excludes_truth(self):
-        class Fixed:
-            def __init__(self, value): self.value = value
-            def randrange(self, low, stop):
-                self.bounds = low, stop
-                return self.value
-        self.assertEqual([random_candidate(0, 5, 3, Fixed(n)) for n in range(5)], [0, 1, 2, 4, 5])
-        self.assertEqual(random_candidate(0, 5, 99, Fixed(3)), 3)
-
-    def test_correct_search_and_candidate_confirmation(self):
-        events, calls = self.run_model()
-        self.assertEqual(events[-1]["result"], "100")
+    def test_doubling_and_interval_midpoints(self):
+        events, calls = self.run_model(13)
+        self.assertEqual([p["state"]["guess"] for p in calls],
+                         ['0', '1', '2', '4', '4', '8', '8', '16', '16', '12', '12', '14', '14', '13'])
+        self.assertEqual(events[-1]["result"], "13")
+        self.assertEqual(events[-1]["judgments"], 15)
+        self.assertEqual(events[-1]["tokens"], 42)
         self.assertIsNone(events[-1]["first_error_index"])
-        previous = [0, 200]
-        for event in events:
-            if event["event"] == "comparison":
-                self.assertEqual(list(map(int, event["before"])), previous)
-                after = list(map(int, event["after"]))
-                self.assertLess(after[1] - after[0], previous[1] - previous[0])
-                self.assertTrue(after[0] <= 100 <= after[1])
-                previous = after
-        candidates = [event for event in events if event["event"] == "candidate"]
-        self.assertTrue(1 <= len(candidates) < 5)
-        for call in calls:
-            self.assertTrue(set(call["state"]) <= {"expression", "candidate"})
-            self.assertNotIn("correct", json.dumps(call))
-        self.assertEqual(len(candidates), len(calls[-1]["questions"]))
+        comparisons = [e for e in events if e['event'] == 'comparison']
+        self.assertEqual([e['after'] for e in comparisons],
+                         [['5', None], ['9', None], ['9', '15'], ['13', '15'], ['13', '13']])
+        for payload in calls:
+            self.assertEqual(set(payload['state']), {'expression', 'guess'})
+        for previous, current in zip(calls, calls[1:]):
+            if 'larger' in current['questions']:
+                self.assertEqual(set(previous['questions']), {'equal'})
+                self.assertEqual(previous['state']['guess'], current['state']['guess'])
+
+    def test_singleton_still_checks_equality(self):
+        events, calls = self.run_model(3)
+        self.assertEqual([p['state']['guess'] for p in calls], ['0', '1', '2', '4', '4', '3'])
+        self.assertEqual(events[-2]['before'], ['3', '3'])
+        self.assertEqual(events[-2]['event'], 'equality')
+        self.assertEqual(events[-1]['result'], '3')
+
+    def test_random_can_select_answer_or_either_endpoint(self):
+        for target in (5, 6, 7):
+            rng = Mock()
+            rng.randrange.return_value = target
+            events, calls = self.run_model(target, strategy='random', rng=rng)
+            rng.randrange.assert_called_once_with(5, 8)
+            self.assertEqual(events[-1]['result'], str(target))
+            self.assertEqual(calls[-1]['state']['guess'], str(target))
+            self.assertEqual(set(calls[-1]['questions']), {'equal'})
+
+    def test_both_strategies_converge_for_boundaries_and_large_numbers(self):
+        for strategy in ('binary', 'random'):
+            for target in [*range(70), -2, -100, 255, 256, 257, 10**24 + 1]:
+                with self.subTest(strategy=strategy, target=target):
+                    events, _ = self.run_model(target, strategy=strategy)
+                    self.assertEqual(events[-1]['result'], str(target))
+                    self.assertIsNone(events[-1]['first_error_index'])
+                    for event in events:
+                        if event['event'] == 'comparison':
+                            low, high = event['after']
+                            self.assertLessEqual(int(low), abs(target))
+                            if high is not None:
+                                self.assertGreaterEqual(int(high), abs(target))
 
     def test_first_wrong_branch_is_retained_not_repaired(self):
-        events, calls = self.run_model(wrong_at=1)
-        failures = [event for event in events if event.get("first_error")]
+        events, _ = self.run_model(wrong_at=1)
+        failures = [event for event in events if event.get('first_error')]
         self.assertEqual(len(failures), 1)
-        self.assertEqual(failures[0]["judgment_index"], 2)
-        after = list(map(int, failures[0]["after"]))
-        self.assertFalse(after[0] <= 100 <= after[1])
-        self.assertEqual(events[-1]["status"], "no_match")
-        self.assertEqual(events[-1]["first_error_index"], 2)
+        self.assertEqual(failures[0]['judgment_index'], 6)
+        self.assertEqual(failures[0]['after'], ['3', '3'])
+        self.assertEqual(events[-1]['status'], 'no_match')
+        self.assertEqual(events[-1]['first_error_index'], 6)
 
-    def test_zero_and_negative_and_small_initial_range(self):
-        for target, upper in [(0, 3), (-2, 3), (-100, 200)]:
-            events, calls = self.run_model(target, upper)
-            self.assertEqual(events[-1]["result"], str(target))
-            self.assertIsNone(events[-1]["first_error_index"])
+    def test_first_yes_finishes_even_when_wrong(self):
+        events, calls = self.run_model(100, equals={1, 2})
+        self.assertEqual(events[-1]['status'], 'complete')
+        self.assertEqual(events[-1]['result'], '1')
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(events[-1]['first_error_index'], 3)
 
-    def test_multiple_yes_and_all_no_are_explicit(self):
-        events, _ = self.run_model(1, 3, equals={1, 2})
-        self.assertEqual(events[-1]["status"], "ambiguous")
-        self.assertIsNone(events[-1]["result"])
-        events, _ = self.run_model(1, 3, equals=set())
-        self.assertEqual(events[-1]["status"], "no_match")
-        self.assertEqual(events[-1]["first_error_index"], 3)  # sign, zero, one
+    def test_rejected_singleton_does_not_infer_answer(self):
+        events, _ = self.run_model(3, equals=set())
+        self.assertEqual(events[-1]['status'], 'no_match')
+        self.assertIsNone(events[-1]['result'])
+        self.assertEqual(events[-2]['event'], 'comparison')
+        self.assertEqual(events[-1]['first_error_index'], 7)
 
     def test_noul_probability_and_threshold(self):
         for p, yes, selected in [(.5, True, .5), (.1, False, .9), (1, True, 1)]:
@@ -227,12 +248,21 @@ class NoulTests(unittest.TestCase):
         events, _ = self.run_model(max_steps=1)
         self.assertEqual(events[-1]["event"], "limit")
 
+    def test_endless_expansion_stops_at_judgment_limit(self):
+        def call(payload):
+            return {'model': 'jev-test', 'answers': {
+                key: {'type': 'noul', 'noul': .1} for key in payload['questions']}}
+        events = list(audit_judgments(predict_noul('1', 'jev-test', '', threading.Event(),
+                         call=call, max_steps=10), 1))
+        self.assertEqual(events[-1]['event'], 'limit')
+        self.assertEqual(sum(e['event'] in ('equality', 'comparison') for e in events), 10)
+
     def test_cancel_discards_response(self):
         event = threading.Event()
         def call(payload):
             event.set()
             return {}
-        self.assertEqual(list(predict_noul("1+1", "jev-test", "", event, 10, 2, call)), [{"event": "cancelled"}])
+        self.assertEqual(list(predict_noul("1+1", "jev-test", "", event, call=call)), [{"event": "cancelled"}])
 
     def test_sign_error_is_first_even_if_digits_correct(self):
         raw = [{"event": "sign", "choice": "positive"}, {"event": "digit", "position": 0, "choice": "2"},

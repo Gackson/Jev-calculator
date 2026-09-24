@@ -156,3 +156,16 @@ footer{justify-content:flex-start;align-items:center;gap:14px}.github-link{displ
 @media(max-width:480px){.provider-button{font-size:10px}}
 
 @media(min-width:1450px){.chat-thread{height:calc(100dvh - 357px)}}
+
+/* A shared note above the page panels, using the existing paper and ink palette. */
+.global-notes{margin-top:22px;border:1px solid var(--line);border-radius:10px;background:#fffefa}
+.notes-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:14px 22px;list-style:none;cursor:pointer;font-size:12px;font-weight:600;border-radius:10px}
+.notes-heading::-webkit-details-marker{display:none}.notes-heading::marker{content:''}
+.notes-heading:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
+.notes-subtitle{font-weight:400;color:var(--muted)}.notes-heading svg{flex-shrink:0;color:var(--muted)}
+.global-notes[open]>.notes-heading svg{transform:rotate(90deg)}
+.notes-content{padding:0 22px 18px}
+.global-notes textarea{display:block;width:100%;min-height:66px;max-height:240px;resize:vertical;border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:var(--paper);color:var(--ink);font:inherit;font-size:13px;line-height:1.6}
+.global-notes textarea::placeholder{color:var(--muted)}.global-notes textarea:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+.global-notes textarea:disabled{opacity:.65;cursor:wait}.global-notes p{margin:9px 0 0;color:var(--muted);font-size:11px;line-height:1.6}
+@media(max-width:480px){.global-notes{margin-top:16px}.notes-heading{padding:14px 15px;gap:8px}.notes-content{padding:0 15px 15px}}

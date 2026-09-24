@@ -55,7 +55,7 @@ class LocalBackendTests(unittest.TestCase):
 
     def test_all_features_local_without_key_or_remote_calls(self):
         cases = [('/api/step', {'expression': '1+1', 'mode': 'choice'}),
-                 ('/api/step', {'expression': '1+1', 'mode': 'noul', 'upper': '10'}),
+                 ('/api/step', {'expression': '1+1', 'mode': 'noul'}),
                  ('/api/chat', {'message': 'Say hello'}),
                  *[('/api/draw', {'prompt': 'cat', 'size': 14, 'mode': mode})
                    for mode in ('enumeration', 'monte_carlo', 'ballpoint')]]

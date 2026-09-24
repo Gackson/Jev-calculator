@@ -5,8 +5,8 @@ import threading
 import unittest
 from unittest.mock import Mock, patch
 
-from calculator import DIGITS, SIGN, audit_judgments, predict, predict_noul
-from step_api import calculate_step, handle_step
+from calculator import DIGITS, SIGN, MAX_NOUL_STEPS, audit_judgments, predict, predict_noul
+from step_api import MAX_BODY, calculate_step, handle_step
 from test_calculator import answer
 
 
@@ -19,7 +19,7 @@ class StepTests(unittest.TestCase):
             self.assertLessEqual(len(call.calls) - before, 1)
             self.assertNotIn('key-never-returned', json.dumps(result))
             for event in result['events']:
-                if event['event'] in ('sign', 'digit', 'comparison', 'candidate'):
+                if event['event'] in ('sign', 'digit', 'comparison', 'equality'):
                     self.assertEqual(event['request'], call.calls[-1])
                     self.assertEqual(set(event['request']), {'model', 'state', 'questions'})
             events.extend(result['events'])
@@ -27,7 +27,7 @@ class StepTests(unittest.TestCase):
             rounds += 1
             if cursor is None:
                 return events, rounds
-            self.assertLess(rounds, 131)
+            self.assertLess(rounds, MAX_NOUL_STEPS + 2)
 
     def choice_call(self, choices, sign='positive'):
         remaining = iter(choices)
@@ -48,9 +48,9 @@ class StepTests(unittest.TestCase):
                 if key == 'sign':
                     yes = (target < 0) != wrong_sign
                 elif key == 'larger':
-                    yes = (int(payload['state']['candidate']) > abs(target)) != wrong_comparison
+                    yes = (int(payload['state']['guess']) > abs(target)) != wrong_comparison
                 else:
-                    candidate = int(question['instructions'].split('equal to ')[1].rstrip('?'))
+                    candidate = int(payload['state']['guess'])
                     yes = all_yes or candidate == abs(target)
                 answers[key] = {'type': 'noul', 'noul': .9 if yes else .1}
             return {'model': 'jev-test', 'answers': answers, 'usage': {'input_tokens': 10}}
@@ -102,58 +102,69 @@ class StepTests(unittest.TestCase):
         events, _ = self.run_steps({'expression': '1'}, self.choice_call(['1'] * 24 + ['END']))
         self.assertEqual(events[-1]['status'], 'complete')
 
-    def test_noul_matches_original_correct_and_wrong_paths(self):
-        for target, upper, wrong, sign, all_yes in [(100,200,False,False,False), (0,2,False,False,False),
-                (-100,201,False,True,False), (100,200,True,False,False), (1,3,False,False,True),
-                (10**23,10**24,False,False,False)]:
-            with self.subTest(target=target, wrong=wrong, all_yes=all_yes):
-                call = self.noul_call(target, wrong, sign, all_yes)
-                events, _ = self.run_steps({'expression': str(target), 'mode': 'noul', 'upper': str(upper)}, call, random.Random(5))
-                baseline = list(audit_judgments(predict_noul(str(target), 'jev-test', '', threading.Event(), upper,
-                    target, call=self.noul_call(target, wrong, sign, all_yes), rng=random.Random(5)), target))
-                self.assertEqual(self.stable(events), self.stable(baseline))
-                for payload in call.calls:
-                    if 'candidate' in payload['state']:
-                        self.assertNotEqual(int(payload['state']['candidate']), abs(target))
-                    self.assertNotIn('target', payload['state'])
+    def test_noul_stepwise_matches_stream_for_both_strategies(self):
+        for strategy in ('binary', 'random'):
+            for target, wrong, sign, all_yes in [(100,False,False,False), (0,False,False,False),
+                    (-100,False,True,False), (100,True,False,False), (1,False,False,True),
+                    (3,False,False,False), (2,False,False,False), (10**24+1,False,False,False)]:
+                with self.subTest(strategy=strategy, target=target, wrong=wrong, all_yes=all_yes):
+                    call = self.noul_call(target, wrong, sign, all_yes)
+                    events, _ = self.run_steps({'expression': str(target), 'mode': 'noul', 'strategy': strategy}, call, random.Random(5))
+                    baseline = list(audit_judgments(predict_noul(str(target), 'jev-test', '', threading.Event(),
+                        call=self.noul_call(target, wrong, sign, all_yes), rng=random.Random(5), strategy=strategy), target))
+                    self.assertEqual(self.stable(events), self.stable(baseline))
+                    self.assertNotIn('upper', events[0])
+                    for payload in call.calls:
+                        self.assertEqual(set(payload['state']), {'expression', 'guess'})
 
-    def test_binary_search_midpoint_exclusion_and_convergence(self):
-        for target, upper in [(100, 200), (0, 200), (-99, 200), (199, 200),
-                              (1, 3), (2, 4), (10**23, 10**24)]:
-            with self.subTest(target=target, upper=upper):
-                rng = Mock()
-                call = self.noul_call(target)
-                events, rounds = self.run_steps({'expression': str(target), 'mode': 'noul',
-                    'upper': str(upper), 'strategy': 'binary'}, call, rng)
-                self.assertTrue(events[-1]['match'])
-                self.assertEqual(events[-1]['first_error_index'], None)
-                self.assertLessEqual(rounds, upper.bit_length() + 1)
-                rng.randrange.assert_not_called()
-                for event in events:
-                    if event['event'] == 'comparison':
-                        low, high = map(int, event['before'])
-                        midpoint = (low + high) // 2
-                        self.assertEqual(int(event['candidate']), midpoint + int(midpoint == abs(target)))
-                        self.assertNotEqual(int(event['candidate']), abs(target))
-                        self.assertEqual(event['strategy'], 'binary')
-                    elif event['event'] == 'candidate':
-                        self.assertLess(int(event['before'][1]) - int(event['before'][0]) + 1, 5)
-                for payload in call.calls:
-                    self.assertNotIn('target', payload['state'])
-                    self.assertNotIn('integer_target', payload['state'])
+    def test_binary_search_midpoint_can_be_answer(self):
+        rng = Mock()
+        events, _ = self.run_steps({'expression': '6', 'mode': 'noul', 'strategy': 'binary'}, self.noul_call(6), rng)
+        self.assertTrue(events[-1]['match'])
+        rng.randrange.assert_not_called()
+        self.assertEqual(events[-2]['guess'], '6')
+        self.assertEqual(events[-2]['event'], 'equality')
+        self.assertEqual(events[-2]['before'], ['5', '7'])
 
     def test_binary_errors_do_not_repair_model_path(self):
-        events, _ = self.run_steps({'expression': '100', 'mode': 'noul', 'upper': '200',
+        events, _ = self.run_steps({'expression': '100', 'mode': 'noul',
             'strategy': 'binary'}, self.noul_call(100, wrong_comparison=True))
         comparison = next(e for e in events if e['event'] == 'comparison')
-        self.assertEqual(comparison['candidate'], '101')
-        self.assertEqual(comparison['after'], ['102', '200'])
+        self.assertEqual(comparison['guess'], '4')
+        self.assertEqual(comparison['after'], ['3', '3'])
         self.assertTrue(comparison['first_error'])
-        self.assertEqual(events[-1]['first_error_index'], 2)
+        self.assertEqual(events[-1]['first_error_index'], 6)
         self.assertFalse(events[-1]['match'])
 
+    def test_noul_invalid_cursor_never_calls_upstream(self):
+        body = {'expression': '100', 'mode': 'noul'}
+        cursor = calculate_step(body, '', model='jev-test', call=self.noul_call(100))['cursor']
+        for changes in ({'phase': 'larger'}, {'phase': 'candidate'}, {'guess': '4'},
+                        {'guess': '-1'}, {'low': '2'}, {'high': '3'}, {'count': 512},
+                        {'count': 513}, {'guess': '9' * 156}):
+            with self.subTest(changes=changes):
+                call = Mock()
+                with self.assertRaises(ValueError):
+                    calculate_step({**body, 'cursor': {**cursor, 'state': {**cursor['state'], **changes}}}, '', call=call)
+                call.assert_not_called()
+
+    def test_limit_survives_stateless_expansion(self):
+        call = self.noul_call(2**300)
+        # Recreate a valid checkpoint just before the request limit.
+        body = {'expression': '1', 'mode': 'noul'}
+        cursor = calculate_step(body, '', model='jev-test', call=call)['cursor']
+        cursor.update(index=512)
+        cursor['state'].update(count=511, low=str(2**255+1), high=None, guess=str(2**256), phase='equal')
+        result = calculate_step({**body, 'cursor': cursor}, '', model='jev-test', call=call)
+        self.assertEqual(result['cursor']['state']['count'], 512)
+        before = len(call.calls)
+        result = calculate_step({**body, 'cursor': result['cursor']}, '', model='jev-test', call=call)
+        self.assertEqual(result['events'][0]['event'], 'limit')
+        self.assertIsNone(result['cursor'])
+        self.assertEqual(len(call.calls), before)
+
     def test_strategy_cannot_change_mid_run(self):
-        body = {'expression': '100', 'mode': 'noul', 'upper': '200', 'strategy': 'binary'}
+        body = {'expression': '100', 'mode': 'noul', 'strategy': 'binary'}
         cursor = calculate_step(body, '', call=self.noul_call(100))['cursor']
         for value in ('random', 'unsupported', None, []):
             call = Mock()
@@ -165,7 +176,7 @@ class StepTests(unittest.TestCase):
         body = {'expression': '102'}
         cursor = calculate_step(body, '', call=self.choice_call(['2']))['cursor']
         cases = [ {'expression':'103','cursor':cursor}, {'expression':'1/0'},
-                 {'expression':'1','mode':'noul','upper':'1'}, {'expression':'1','include_context':'yes'},
+                 {'expression':'1','include_context':'yes'},
                  {'expression':'102','cursor':{}}, {'expression':'102','cursor':{**cursor,'index':129}},
                  {'expression':'102','cursor':{**cursor,'state':{**cursor['state'],'digits':['END']}}}]
         for body in cases:
@@ -202,7 +213,7 @@ class StepTests(unittest.TestCase):
                 self.assertNotIn(key,h.wfile.getvalue().decode())
             call.reset_mock()
             for h, status in [(request({},None),401),(request({},origin='https://evil.test'),403),
-                              (request({'expression':'1'*9000}),400)]:
+                              (request({'expression':'1'*(MAX_BODY + 1)}),400)]:
                 handle_step(h)
                 self.assertEqual(h.send_response.call_args.args[0],status)
             call.assert_not_called()

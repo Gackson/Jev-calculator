@@ -3,7 +3,7 @@ import string
 import copy
 import time
 
-from calculator import validate_choice
+from calculator import validate_choice, notes_context
 from typesafe_client import model_matches, system_one
 
 MAX_CHARACTERS = 256
@@ -37,6 +37,7 @@ def repeated_character(text):
 def chat_step(body, token, model='jev-1.13.0', call=None):
     if not isinstance(body, dict):
         raise ValueError('Invalid request')
+    extra_context = notes_context(body.get('notes', ''))
     prompt, prefix = body.get('message'), body.get('reply', '')
     limit, history = body.get('max_characters', 128), body.get('history', [])
     if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 1000:
@@ -56,7 +57,7 @@ def chat_step(body, token, model='jev-1.13.0', call=None):
             raise ValueError('Invalid history entry')
         clean_history.append({'role': item['role'], 'content': item['content']})
     payload = {'model': model, 'state': {'conversation': clean_history, 'user_message': prompt,
-               'reply_so_far': prefix}, 'questions': {'character': {
+               'reply_so_far': prefix, **extra_context}, 'questions': {'character': {
                    'type': 'choice', 'instructions': INSTRUCTIONS, 'criteria': OPTIONS}}}
     started = time.monotonic()
     request_input = copy.deepcopy(payload)
