@@ -1,0 +1,2 @@
+# Optional local inference; TypeSafe mode uses the Python standard library only.
+laya==0.3.4

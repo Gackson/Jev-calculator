@@ -5,9 +5,67 @@ const percent = (p) => new Intl.NumberFormat(locale, {style: 'percent', minimumF
 let strategy = 'random', eventHistory = [], replaying = false;
 let mode = 'choice', steps = [], selected = null, runId = null, busy = false, terminal = false;
 let apiKey = '', stopRequested = false, environmentKey = false;
+let provider = 'typesafe', localProviders = false;
+function needsApiKey() { return provider === 'typesafe' && !environmentKey && !apiKey; }
+function inferenceHeaders() {
+  return {'Content-Type': 'application/json',
+    ...(localProviders ? {'X-Inference-Provider': provider} : {}),
+    ...(provider === 'typesafe' && !environmentKey && apiKey ? {Authorization: `Bearer ${apiKey}`} : {})};
+}
+function updateProviderControls() {
+  $('provider').disabled = !localProviders || busy || document.body.dataset.chatBusy === 'true' || document.body.dataset.drawBusy === 'true';
+}
+function updateProviderMenu() {
+  $('provider-label').textContent = provider === 'laya' ? t('Laya · 本地') : 'TypeSafe API';
+  document.querySelectorAll('[data-provider]').forEach(item => item.setAttribute('aria-checked', String(item.dataset.provider === provider)));
+}
+function closeProviderMenu(restoreFocus = false) {
+  $('provider-menu').hidden = true;
+  $('provider').setAttribute('aria-expanded', 'false');
+  if (restoreFocus) $('provider').focus();
+}
+const providerItems = [...document.querySelectorAll('[data-provider]')];
+function openProviderMenu(index = providerItems.findIndex(item => item.dataset.provider === provider)) {
+  if ($('provider').disabled) return;
+  updateProviderMenu();
+  closeLanguageMenu();
+  $('provider-menu').hidden = false;
+  $('provider').setAttribute('aria-expanded', 'true');
+  providerItems[Math.max(0, index)].focus();
+}
+$('provider').addEventListener('click', () => {
+  if ($('provider-menu').hidden) openProviderMenu();
+  else closeProviderMenu(true);
+});
+$('provider').addEventListener('keydown', event => {
+  if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+  event.preventDefault();
+  openProviderMenu(event.key === 'ArrowDown' ? 0 : providerItems.length - 1);
+});
+providerItems.forEach(item => item.addEventListener('click', () => {
+  if ($('provider').disabled) return;
+  provider = item.dataset.provider;
+  uiModelName = provider === 'laya' ? 'Laya' : 'Jev';
+  changeLanguage(locale);
+  closeProviderMenu(true);
+}));
+$('provider-menu').addEventListener('keydown', event => {
+  const index = providerItems.indexOf(document.activeElement);
+  const next = {ArrowDown: (index + 1) % providerItems.length, ArrowUp: (index - 1 + providerItems.length) % providerItems.length, Home: 0, End: providerItems.length - 1}[event.key];
+  if (next !== undefined) { event.preventDefault(); providerItems[next].focus(); }
+  if (event.key === 'Escape') { event.preventDefault(); closeProviderMenu(true); }
+});
+$('provider-control').addEventListener('focusout', event => {
+  if (!$('provider-control').contains(event.relatedTarget)) closeProviderMenu();
+});
+document.addEventListener('click', event => {
+  if (!$('provider-control').contains(event.target)) closeProviderMenu();
+});
 // Always start checked, including browsers that restore prior form values.
 $('include-context').checked = true;
 function updateKeyStatus() {
+  updateProviderMenu();
+  $('connection').hidden = provider === 'laya';
   $('connection').textContent = environmentKey ? t('使用环境 Key') : apiKey ? t('API Key 已填写') : t('设置 API Key');
   $('connection').classList.toggle('ready', Boolean(environmentKey || apiKey));
 }
@@ -58,6 +116,10 @@ function node(tag, className, text) {
   if (text !== undefined) el.textContent = text;
   return el;
 }
+function renderRequestInput(prefix, request) {
+  $(`${prefix}-request-code`).textContent = request
+    ? JSON.stringify(request, null, 2) : t('该轮未记录输入。');
+}
 function optionLabel(value) { return value === 'negative' ? t('负数') : value === 'positive' ? t('非负数') : t(value); }
 function title(step) {
   if (step.event === 'sign') return t('符号判断');
@@ -73,12 +135,14 @@ function question(step) {
 }
 function setBusy(value) {
   busy = value;
+  updateProviderControls();
   document.body.classList.toggle('busy', value);
   $('submit').disabled = value;
   $('submit').replaceChildren(document.createTextNode(value ? t('预测中') : t('开始计算')), node('span', '', value ? '…' : '='));
   $('stop').hidden = !value; $('stop').disabled = false;
   ['expression', 'include-context', 'mode-choice', 'mode-noul', 'connection', 'strategy-binary', 'strategy-random'].forEach((id) => { $(id).disabled = value; });
   $('upper').disabled = value || mode !== 'noul';
+  document.dispatchEvent(new Event('jev:busy'));
   document.querySelectorAll('[data-example]').forEach((button) => { button.disabled = value; });
 }
 function updateMode() {
@@ -144,6 +208,7 @@ reducedMotion.addEventListener('change', clearResultEffect);
 document.addEventListener('visibilitychange', () => { if (document.hidden) clearResultEffect(); });
 
 function resetScreen() {
+  $('detail-request').open = false;
   clearResultEffect();
   if (!replaying) eventHistory = [];
   steps = []; selected = null; terminal = false;
@@ -178,6 +243,7 @@ function selectStep(key) {
   $('detail-correct').textContent = `${step.first_error ? t('首次错误') + ' · ' : ''}${step.correct ? t('判断正确') : t('判断错误')} · ${t('正确选项：{option}', {option: optionLabel(step.expected)})}`;
   $('detail-correct').className = `detail-correct ${step.correct ? 'good' : 'bad'}`;
   $('detail-footnote').textContent = noul ? t('Noul 无独立置信度；概率 ≥ 50% 判为“是”。') : t('置信度不等于正确率。');
+  renderRequestInput('detail', step.request);
   document.querySelectorAll('[data-step]').forEach((button) => {
     const active = button.dataset.step === String(key);
     button.classList.toggle('selected', active); button.setAttribute('aria-pressed', String(active));
@@ -278,12 +344,12 @@ function handleEvent(event) {
   }
 }
 $('calculator-form').addEventListener('submit', async (e) => {
-  e.preventDefault(); if (busy) return;
+  e.preventDefault(); if (busy || document.body.dataset.chatBusy === 'true' || document.body.dataset.drawBusy === 'true') return;
   const expression = $('expression').value.trim(); if (!expression) return;
-  if (!await configReady || busy) return;
-  if (!environmentKey && !apiKey) { openKeyDialog(); return; }
+  if (!await configReady || busy || document.body.dataset.chatBusy === 'true' || document.body.dataset.drawBusy === 'true') return;
+  if (needsApiKey()) { openKeyDialog(); return; }
   resetScreen(); runId = crypto.randomUUID(); stopRequested = false;
-  $('run-status').textContent = t('正在连接 Jev…'); setBusy(true);
+  $('run-status').textContent = t('正在连接模型…'); setBusy(true);
   const input = { expression, mode, strategy, include_context: $('include-context').checked, upper: $('upper').value.trim() };
   const started = performance.now();
   try {
@@ -294,7 +360,7 @@ $('calculator-form').addEventListener('submit', async (e) => {
       let data;
       try {
         const response = await fetch('/api/step', { method: 'POST', signal: controller.signal,
-          headers: { 'Content-Type': 'application/json', ...(!environmentKey && apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}) },
+          headers: inferenceHeaders(),
           body: JSON.stringify({ ...input, cursor }) });
         if (!(response.headers.get('content-type') || '').includes('application/json')) {
           throw new Error('服务暂时不可用，请稍后重试。');
@@ -339,7 +405,12 @@ const configReady = fetch('/api/config').then((r) => {
   return r.json();
 }).then((config) => {
   environmentKey = config.auth_mode === 'environment';
-  updateKeyStatus();
+  localProviders = Array.isArray(config.providers) && config.providers.includes('laya');
+  provider = localProviders && config.provider === 'laya' ? 'laya' : 'typesafe';
+  uiModelName = provider === 'laya' ? 'Laya' : 'Jev';
+  $('provider-control').hidden = !localProviders;
+  updateProviderControls();
+  changeLanguage(locale);
   return true;
 }).catch(() => { showError('无法连接计算服务，请刷新页面或稍后重试。'); return false; });
 updateKeyStatus();
@@ -359,8 +430,9 @@ function changeLanguage(value) {
     if (hadError) showError(errorMessage);
     setBusy(busy);
     if (stopRequested && busy) { $('stop').disabled = true; $('run-status').textContent = t('正在停止，等待当前请求结束后不再发起下一次判断…'); }
-    else if (busy && !history.length) $('run-status').textContent = t('正在连接 Jev…');
+    else if (busy && !history.length) $('run-status').textContent = t('正在连接模型…');
   } finally { replaying = false; }
+  document.dispatchEvent(new Event('jev:language'));
 }
 
 const languageItems = [...document.querySelectorAll('[data-language]')];
@@ -374,6 +446,7 @@ function closeLanguageMenu(restoreFocus = false) {
 }
 function openLanguageMenu(index = languageItems.findIndex((item) => item.dataset.language === locale)) {
   updateLanguageMenu();
+  closeProviderMenu();
   $('language-menu').hidden = false;
   $('language').setAttribute('aria-expanded', 'true');
   languageItems[Math.max(0, index)].focus();

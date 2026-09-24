@@ -15,9 +15,13 @@ class StepTests(unittest.TestCase):
         cursor, events, rounds = None, [], 0
         while True:
             before = len(call.calls)
-            result = calculate_step({**body, 'cursor': cursor}, 'key-never-returned', call=call, rng=rng)
+            result = calculate_step({**body, 'cursor': cursor}, 'key-never-returned', model='jev-test', call=call, rng=rng)
             self.assertLessEqual(len(call.calls) - before, 1)
             self.assertNotIn('key-never-returned', json.dumps(result))
+            for event in result['events']:
+                if event['event'] in ('sign', 'digit', 'comparison', 'candidate'):
+                    self.assertEqual(event['request'], call.calls[-1])
+                    self.assertEqual(set(event['request']), {'model', 'state', 'questions'})
             events.extend(result['events'])
             cursor = result['cursor']
             rounds += 1

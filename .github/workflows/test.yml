@@ -14,4 +14,5 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python -m unittest discover -v
-      - run: node --check calculator_ui/app.js
+      - run: |
+          for file in calculator_ui/*.js; do node --check "$file"; done

@@ -4,11 +4,14 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dumb Calculator · Jev</title>
   <meta name="description" content="看看 Jev 能否用滑稽的方式预测出算式答案">
-  <link rel="stylesheet" href="/style.css"><script src="/i18n.js" defer></script><script src="/app.js" defer></script>
+  <link rel="stylesheet" href="/style.css"><script src="/i18n.js" defer></script><script src="/app.js" defer></script><script src="/chat.js" defer></script><script src="/draw.js" defer></script>
 </head>
 <body>
   <main>
-    <header><a class="brand" href="/" aria-label="Dumb Calculator 首页">JEV <span class="brand-sub">/ DUMB CALCULATOR</span></a><div class="header-actions"><div class="language-picker" id="language-picker">
+    <header><a class="brand" href="/" aria-label="Dumb Calculator 首页">JEV <span class="brand-sub">/ DUMB CALCULATOR</span></a><div class="header-actions"><div id="provider-control" class="language-picker" hidden>
+      <button type="button" id="provider" class="key-button provider-button" aria-label="推理模型" aria-haspopup="menu" aria-expanded="false" aria-controls="provider-menu" disabled><span id="provider-label">TypeSafe API</span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
+      <div id="provider-menu" class="language-menu" role="menu" aria-label="推理模型" hidden><button type="button" role="menuitemradio" aria-checked="true" tabindex="-1" data-provider="typesafe">TypeSafe API</button><button type="button" role="menuitemradio" aria-checked="false" tabindex="-1" data-provider="laya">Laya · 本地</button></div>
+    </div><div class="language-picker" id="language-picker">
       <button type="button" class="key-button language-button" id="language" aria-label="语言 / Language" aria-haspopup="menu" aria-expanded="false" aria-controls="language-menu"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg></button>
       <div id="language-menu" class="language-menu" role="menu" aria-label="语言 / Language" hidden>
         <button type="button" role="menuitemradio" aria-checked="false" tabindex="-1" data-language="zh-CN" lang="zh-CN">简体中文</button>
@@ -20,6 +23,12 @@
       </div>
     </div><button type="button" class="connection key-button" id="connection" aria-haspopup="dialog">设置 API Key</button></div></header>
     <dialog id="key-dialog" aria-labelledby="key-title" aria-describedby="key-note"><form id="key-form"><div class="section-top"><h2 id="key-title">使用自己的 API Key</h2><button type="button" id="key-close" class="key-close" aria-label="关闭 API 设置">×</button></div><label for="api-key">TypeSafe API Key</label><input id="api-key" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="2048" placeholder="粘贴你的 API Key"><p id="key-note">仅当前页面使用，刷新后清除。</p><p id="key-error" class="key-error" role="alert" hidden></p><div class="key-actions"><button type="button" id="key-clear" class="stop">清除</button><button type="submit" class="primary">使用此 Key</button></div></form></dialog>
+    <nav class="page-tabs" role="tablist" aria-label="Jev">
+      <button id="tab-calculator" role="tab" aria-selected="true" aria-controls="page-calculator" data-page="calculator">Calculator</button>
+      <button id="tab-chat" role="tab" aria-selected="false" aria-controls="page-chat" tabindex="-1" data-page="chat">Chat</button>
+      <button id="tab-draw" role="tab" aria-selected="false" aria-controls="page-draw" tabindex="-1" data-page="draw">Canvas</button>
+    </nav>
+    <div id="page-calculator" role="tabpanel" aria-labelledby="tab-calculator">
     <section class="intro"><h1>Dumb Calculator<span>.</span></h1><p class="tagline">看看 Jev 能否用滑稽的方式预测出算式答案</p></section>
     <section class="input-panel" aria-label="输入算式">
       <div class="mode-controls"><div class="mode-switch" role="group" aria-label="计算模式"><button type="button" id="mode-choice" aria-pressed="true">Choice · 按位计算</button><button type="button" id="mode-noul" aria-pressed="false">Noul · 猜大小</button></div><p id="mode-description" class="mode-description" aria-live="polite"><span id="description-choice">从个位向左逐位选择 0–9，遇到终止符即停止。</span><span id="description-random" hidden>随机取非答案数字猜大小，逐步缩小区间；剩余不足 5 项时逐项确认。</span><span id="description-binary" hidden>取区间中点猜大小；中点为答案时改取相邻数，剩余不足 5 项时逐项确认。</span></p></div>
@@ -36,9 +45,67 @@
         <div class="truth"><div><h2>真实结果</h2></div><div id="actual" class="actual">—</div></div>
         <div class="comparison-footer"><span id="comparison-note">整数按向零截断比较</span><span class="verdict" id="verdict">待对比</span></div>
       </section>
-      <aside class="inspector" aria-label="判断详情"><div class="section-top"><h2>判断显微镜</h2></div><div id="detail-empty" class="detail-empty"><div class="inspect-symbol">⌕</div><h3>点击数字或判断查看详情</h3></div><div id="detail" hidden><div class="detail-heading"><span id="detail-place"></span><strong id="detail-choice"></strong></div><p id="detail-question" class="detail-question"></p><div class="confidence"><span id="confidence-label">判断置信度</span><strong id="confidence"></strong></div><div class="top-label"><span>候选选项</span><span id="probability-label">概率 · TOP 3</span></div><div id="candidates"></div><p id="detail-correct" class="detail-correct"></p><p class="detail-footnote" id="detail-footnote"></p></div></aside>
+      <aside class="inspector" aria-label="判断详情"><div class="section-top"><h2>判断显微镜</h2></div><div id="detail-empty" class="detail-empty"><div class="inspect-symbol">⌕</div><h3>点击数字或判断查看详情</h3></div><div id="detail" hidden><div class="detail-heading"><span id="detail-place"></span><strong id="detail-choice"></strong></div><p id="detail-question" class="detail-question"></p><div class="confidence"><span id="confidence-label">判断置信度</span><strong id="confidence"></strong></div><div class="top-label"><span>候选选项</span><span id="probability-label">概率 · TOP 3</span></div><div id="candidates"></div><p id="detail-correct" class="detail-correct"></p><p class="detail-footnote" id="detail-footnote"></p><details class="request-input" id="detail-request"><summary>查看完整输入</summary><pre tabindex="0" aria-label="发送给 Jev 的完整输入"><code id="detail-request-code"></code></pre></details></div></aside>
     </div>
     <section class="trace-section"><div class="trace-header"><h2>判断列表 <span id="step-count">00</span></h2></div><div id="trace" class="judgment-list"><p class="trace-empty">Jev的每次判断记录在这里</p></div></section>
+    </div>
+    <section id="page-chat" role="tabpanel" aria-labelledby="tab-chat" hidden>
+      <div class="intro"><h1>Dumb Chat<span>.</span></h1><p class="tagline">让 Jev 一个字符一个字符地回复你</p></div>
+      <div class="chat-workspace">
+        <section class="chat-thread" aria-label="对话">
+          <div class="chat-toolbar"><h2>Chat</h2><button class="key-button" id="chat-clear" type="button">新对话</button></div>
+          <div class="chat-messages" id="chat-messages"><p class="chat-empty" id="chat-empty">输入消息，开始对话</p></div>
+          <form id="chat-form" class="chat-composer">
+            <label class="sr-only" for="chat-input">输入消息</label>
+            <textarea id="chat-input" rows="2" maxlength="1000" placeholder="输入消息…" required></textarea>
+            <div class="chat-composer-actions"><label for="chat-limit"><span>字符上限</span><select id="chat-limit"><option>64</option><option selected>128</option><option>256</option></select></label><div><button type="button" class="stop" id="chat-stop" hidden>停止</button><button type="submit" class="primary" id="chat-send">发送 ↑</button></div></div>
+            <p id="chat-error" class="key-error" role="alert" hidden></p>
+          </form>
+        </section>
+        <aside class="inspector chat-inspector" aria-label="字符详情">
+          <div class="section-top"><h2>判断显微镜</h2></div>
+          <p id="chat-detail-empty" class="chat-detail-empty">点击回答中的字符查看概率</p>
+          <div id="chat-detail" hidden>
+            <div class="detail-heading"><span id="chat-position"></span><strong id="chat-choice"></strong></div>
+            <div class="confidence"><span>所选字符概率</span><strong id="chat-probability"></strong></div>
+            <div class="confidence"><span>判断置信度</span><strong id="chat-confidence"></strong></div>
+            <div class="top-label"><span>候选选项</span><span>概率 · 全部</span></div>
+            <div id="chat-candidates"></div>
+            <p id="chat-detail-meta" class="detail-footnote"></p><p class="detail-footnote">置信度不等于正确率。</p><details class="request-input" id="chat-request"><summary>查看完整输入</summary><pre tabindex="0" aria-label="发送给 Jev 的完整输入"><code id="chat-request-code"></code></pre></details>
+          </div>
+        </aside>
+      </div>
+    </section>
+    <section id="page-draw" class="draw-page" role="tabpanel" aria-labelledby="tab-draw" hidden>
+      <div class="intro"><h1>Dumb Canvas<span>.</span></h1><p class="tagline">一段文字，一张点阵图，看 Jev 会画出个啥</p></div>
+      <section class="input-panel" aria-label="绘画设置">
+        <div class="mode-controls"><div class="mode-switch" role="group" aria-label="绘制模式">
+          <button type="button" data-draw-mode="enumeration" aria-pressed="true">枚举法</button>
+          <button type="button" data-draw-mode="monte_carlo" aria-pressed="false">蒙特卡洛法</button>
+          <button type="button" data-draw-mode="ballpoint" aria-pressed="false">圆珠笔</button>
+        </div><p id="draw-description" class="mode-description"></p></div>
+        <form id="draw-form"><label for="draw-prompt">想让 Jev 画什么？</label><div class="draw-input-row"><textarea id="draw-prompt" rows="2" maxlength="1000" placeholder="例如：一只坐着的猫" required></textarea><button class="primary" id="draw-start" type="submit">开始绘画 ↗</button><button class="stop" id="draw-stop" type="button" hidden>停止</button></div></form>
+        <div class="draw-settings"><label for="draw-size">画布分辨率 <output id="draw-resolution" for="draw-size">8 × 8</output></label><input id="draw-size" type="range" min="4" max="14" step="1" value="8" aria-describedby="draw-size-help"><span id="draw-size-help" class="mono">4 × 4 — 14 × 14</span></div>
+      </section>
+      <div class="run-bar"><span id="draw-status" role="status" aria-live="polite"></span><span id="draw-meta" class="mono"></span></div>
+      <p id="draw-error" class="alert" role="alert" hidden></p>
+      <div class="workspace draw-workspace">
+        <section class="draw-canvas-panel" aria-label="点阵画布"><div class="section-top"><h2><span class="tiny-dot"></span> JEV CANVAS</h2><span id="draw-canvas-size" class="tag">8 × 8</span></div>
+          <div id="draw-canvas" class="draw-canvas" role="img" aria-label="黑白点阵画布"></div>
+          <div class="draw-canvas-footer"><span id="draw-progress"></span><span>BLACK / WHITE</span></div>
+        </section>
+        <aside class="inspector draw-inspector" aria-label="判断详情"><div class="section-top"><h2>判断显微镜</h2></div>
+          <div id="draw-detail-empty" class="detail-empty"><div class="inspect-symbol">⌕</div><h3>点击判断查看详情</h3></div>
+          <div id="draw-detail" hidden><div class="detail-heading"><span id="draw-position"></span><strong id="draw-choice"></strong></div><p id="draw-question" class="detail-question"></p>
+            <div class="confidence"><span id="draw-confidence-label">判断置信度</span><strong id="draw-confidence"></strong></div>
+            <div class="top-label"><span>候选选项</span><span>概率 · 全部</span></div><div id="draw-candidates"></div>
+            <p id="draw-detail-meta" class="detail-footnote"></p><p id="draw-footnote" class="detail-footnote"></p>
+            <details class="request-input" id="draw-request"><summary>查看完整输入</summary><pre tabindex="0" aria-label="发送给 Jev 的完整输入"><code id="draw-request-code"></code></pre></details>
+          </div>
+        </aside>
+      </div>
+      <section class="trace-section"><div class="trace-header"><h2>判断列表 <span id="draw-step-count">00</span></h2></div><div id="draw-trace" class="judgment-list"></div></section>
+    </section>
     <footer><span>A SILLY EXPERIMENT MADE BY DULLBLADE</span><a class="github-link" href="https://github.com/Gackson" target="_blank" rel="noopener noreferrer" aria-label="访问 Dullblade 的 GitHub 主页" title="GitHub"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .297C5.37.297 0 5.67 0 12.297c0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.043-1.61-4.043-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.838 1.237 1.838 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.536-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.52 11.52 0 0 1 12 6.096c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.655 1.652.243 2.873.12 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.606-.015 2.898-.015 3.293 0 .322.216.694.825.576C20.565 22.092 24 17.597 24 12.297c0-6.627-5.373-12-12-12"/></svg></a></footer>
   </main>
 </body>

@@ -40,3 +40,9 @@ def probability(value):
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1:
         raise ValueError("Invalid probability in model response")
     return float(value)
+
+
+def model_matches(actual, requested):
+    """Keep cloud validation strict while accepting the explicit local backend."""
+    prefix = "laya-" if requested.startswith("laya-") else "jev"
+    return isinstance(actual, str) and actual.startswith(prefix)

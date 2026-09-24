@@ -13,6 +13,20 @@ Dumb Calculator 是由 TypeSafe Jev 模型驱动的一个笨拙的计算器：�
 
 使用 BYOK 模式，输入自己的 API Key 就能开始使用。每步的判断概率、真实结果，以及第一次判断错误的位置都会展示在页面上。
 
+## Chat 与 Canvas 实验
+
+顶部可切换 Calculator、Chat、Canvas。Chat 沿用计算器的 Jev 模型与 Key 配置，通过一次 Choice 选择一个字符，逐字拼出回复。输入支持中文等 Unicode 文本，输出限于大写英文字符集：
+
+- `A–Z`、`0–9`、空格、换行。
+- 标点与符号：`. , ? ! ' " - : ; ( ) / + =`。
+- `END` 结束回复，不计入正文；空格和换行使用独立的 `SPACE`、`NEWLINE` 选项。
+
+每次请求包含当前输入、已输出的原始文本和最近 3 轮对话，不调用其他生成模型，不修正或重新采样 Jev 的选择。连续输出两个 ASCII 空格时自动停止，保留这两个字符与全部判断详情，并标记“连续两个空格，已停止 · 未完成”；不再请求下一个字符，也不伪造 END。连续输出五个相同字符（包括字母、数字、标点或换行）也会自动停止，保留全部字符与判断详情，标记“连续五个相同字符，已停止 · 未完成”；空格仍优先按两个连续空格停止。字符上限可选 64 / 128 / 256（默认 128），达到上限标为未完成，不假装收到 END。停止会中断浏览器等待，保留已展示的字符并停止后续请求；服务端正在执行的那一次请求可能仍会完成。
+
+回复按连续文本显示；点击字符（包括空格、换行和 END）可查看全部候选原始概率、独立 confidence、模型、耗时和 token 用量。支持左右方向键检查相邻字符。生成时详情跟随最新字符；手动选中早先字符后，保留当前选择。Enter 发送、Shift+Enter 换行；新对话清除页面内记录，刷新同样清除。保留现有六种界面语言，切换语言不改变模型提示词或回答。
+
+本地与 Vercel 都使用 `/api/chat` 单步接口，复用现有同源校验与认证；云端仍仅接受 BYOK。Chat 测试使用模拟响应，不消耗 API 额度。
+
 ## 在线体验：
 
 https://jev-calculator-eta.vercel.app/
@@ -53,6 +67,30 @@ Key 输入兼容纯密钥、包裹引号、`Bearer ...` 和 `TYPESAFE_API_KEY=".
 
 - 输入由整数、加减乘除、括号组成的算式，支持 `× ÷ − （ ）`。采用正常优先级，除法保留精度，最终整数目标向零截断，如 `-7 / 2 → -3`。
 
+### 切换到本地 Laya（Calculator / Chat / Canvas 通用）
+
+本地页面右上角新增 **TypeSafe API / Laya · 本地** 下拉框，三种功能共用此选择；运行期间禁止切换。Laya 不需要 API Key，也不调用 TypeSafe，失败时不会回退云端。模型首次调用时加载并缓存，后续请求复用；首次加载可能较慢。历史判断保留当时的模型与输入。
+
+当前工作区已准备好模型和 Python 环境，可从 `Jev-calculator` 目录运行：
+
+```bash
+../.venv-laya/bin/python calculator.py --provider laya
+```
+
+打开 <http://127.0.0.1:8765>。默认 `--provider auto`，首次进入按以下顺序选择：有本地 TypeSafe 环境 Key（系统环境或 `.env`）时优先使用环境 Key；否则，当前 Python 已安装 Laya 且本地 checkpoint 文件齐全时选择 Laya；最后才使用 TypeSafe BYOK。检测不会加载模型或发起网络请求。仍可在页面切换，或用 `--provider typesafe` / `--provider laya` 显式覆盖初始选择。自动寻找项目或父目录中的 `.cache-laya/checkpoint.json`，复用其本地 checkpoint。独立安装时：
+
+```bash
+python3 -m venv .venv-laya
+.venv-laya/bin/python -m pip install -r requirements-laya.txt
+.venv-laya/bin/python calculator.py --provider laya --laya-path /absolute/path/to/laya/multilingual
+```
+
+请使用 Laya SDK 支持的 Python 版本（本工作区为 Python 3.12）。`--laya-path` 指向已下载、包含 `rl_agent_config.json`、`model.safetensors`、`encoder/` 和 `tokenizer/` 的 checkpoint 目录。应用强制离线加载，不会自动下载模型。`--laya-device auto|cpu|mps|cuda` 控制设备，默认自动选择，设备不可用时遵循 SDK 的 CPU 回退行为。
+
+保留原有逐位计算、逐字符 Chat、逐步点阵绘图机制；模型输出的概率与选择不修正。Laya 的 Choice confidence 来自它自己的 SDK，与 Jev 的 confidence 不宜直接比较。输入预算按完整提示词、候选项与状态计算（支持 14×14 的 197 个选项），上限取编码器容量与 8192 的较小值；超限会明确报错，不静默截断。此设置可能超过 checkpoint 默认训练输入长度，输出质量需实际评估。
+
+Vercel 页面不显示本地选项，云函数继续仅支持 TypeSafe BYOK；`.vercelignore` 和云函数 `excludeFiles` 均排除 Laya 推理模块、依赖清单及本地模型目录；本地依赖按需加载，不影响原来的无额外依赖启动方式。验证：`python3 -m unittest discover -v`，覆盖两种计算模式、Chat、三种绘图模式的本地路由、认证隔离和失败处理。
+
 ### Choice 按位计算模式
 
 - Choice 模式从个位向左逐次调用，每次提供 `0–9` 与 `END` 共 11 项，收到 `END` 后立即停止。符号与个位在首次请求中一起独立判断。“带入之前的预测结果”默认开启；关闭后请求仅携带原始算式，完全移除历史预测字段和提示词引用。两种设置都不携带真实答案或真实位数。
@@ -76,9 +114,12 @@ Key 输入兼容纯密钥、包裹引号、`Bearer ...` 和 `TYPESAFE_API_KEY=".
 
 官方接口参考：[Choice](https://docs.typesafe.ai/primitives/choice)、[HTTP API](https://docs.typesafe.ai/api)、[置信度](https://docs.typesafe.ai/confidence)。
 
+每种已实现模式的判断详情底部都有默认折叠的“查看完整输入”。展开后显示该次实际发送的完整 JSON 请求体（model、state、questions，包括 instructions 和 criteria），不含认证头或 API Key；选择历史判断时显示该轮快照。同批判断（如符号与首位、Noul 最终候选）展示同一次完整请求。
+
 ## 项目结构
 
 - `calculator.py`：本地服务、表达式解析、两种预测流程和真值对照。
+- `chat_api.py`：逐字符 Choice、字符集与上下文校验。
 - `step_api.py`：请求校验、无状态逐轮计算和 BYOK 转发入口。
 - `api/`、`vercel.json`：Vercel 云函数入口与部署配置。
 - `typesafe_client.py`：独立 TypeSafe HTTP 客户端，不存储密钥。
@@ -86,3 +127,16 @@ Key 输入兼容纯密钥、包裹引号、`Bearer ...` 和 `TYPESAFE_API_KEY=".
 - `test_*.py`：算法、边界、BYOK 和 HTTP 客户端测试，测试不调用收费 API。
 
 本地服务仅绑定 `127.0.0.1`；线上版本通过 Vercel 提供 HTTPS。两种运行方式均不提供账户、云端历史或共享密钥。
+
+
+## Canvas：文字转黑白点阵图
+
+输入不超过 1000 字的描述，用 slider 选择 **4×4 至 14×14** 的方形画布（默认 8×8）。每次请求仅执行一次 Jev 判断，实时更新画布；三种模式共享现有 Key 配置，使用 `/api/draw`（本地与 Vercel 均支持）。
+
+- **枚举法**：从左到右、从上到下逐格用 Noul 判断；概率 ≥ 50% 画黑，否则留白，扫描完全部格子结束。
+- **蒙特卡洛法**：每轮 Choice 包含全部格子（包括已画黑的格子）和结束选项；Jev 选择结束、画布画满或连续三次选中同一格时结束。名称沿用实验模式，实际消费 Jev 的 Choice，不额外随机采样。
+- **圆珠笔**：选择落点后，每轮选择相邻八方向之一或抬笔；边界只提供画布内的方向。抬笔后可选择新落点或结束。画满或绘制步数严格超过格子总数时结束；落笔和移动各计一步，重复经过黑格也计数，抬笔不计步。
+
+判断列表保留每一步的 Noul / Choice、概率和完整输入；点击记录会显示详情并标出对应格子。停止或请求失败会保留当前画布与已收到的判断，不再继续调用；更改模式或分辨率会重置画布。绘图过程中禁止同时启动 Calculator / Chat。画面完全由 Jev 决策组成，没有预设图案或结果修正。
+
+`python3 -m unittest test_draw_api -v` 覆盖顺序扫描、全部分辨率与位置选项、连续重复终止、八方向与边界、抬笔续画、画满、严格步数上限、非法进度和模型响应。语法检查：`node --check calculator_ui/draw.js`。

@@ -1044,6 +1044,535 @@ const messages = {
     "ko": "언어 / Language"
   }
 };
+Object.assign(messages, {
+  "对话": {
+    "zh-TW": "對話",
+    "en": "Conversation",
+    "ja": "会話",
+    "es": "Conversación",
+    "ko": "대화"
+  },
+  "新对话": {
+    "zh-TW": "新對話",
+    "en": "New chat",
+    "ja": "新しい会話",
+    "es": "Nuevo chat",
+    "ko": "새 대화"
+  },
+  "输入消息，开始对话": {
+    "zh-TW": "輸入訊息，開始對話",
+    "en": "Send a message to start",
+    "ja": "メッセージを入力して開始",
+    "es": "Envía un mensaje para empezar",
+    "ko": "메시지를 입력하여 시작하세요"
+  },
+  "输入消息": {
+    "zh-TW": "輸入訊息",
+    "en": "Message",
+    "ja": "メッセージ",
+    "es": "Mensaje",
+    "ko": "메시지"
+  },
+  "输入消息…": {
+    "zh-TW": "輸入訊息…",
+    "en": "Message…",
+    "ja": "メッセージを入力…",
+    "es": "Escribe un mensaje…",
+    "ko": "메시지 입력…"
+  },
+  "字符上限": {
+    "zh-TW": "字元上限",
+    "en": "Max characters",
+    "ja": "文字数上限",
+    "es": "Máx. caracteres",
+    "ko": "최대 글자 수"
+  },
+  "发送 ↑": {
+    "zh-TW": "傳送 ↑",
+    "en": "Send ↑",
+    "ja": "送信 ↑",
+    "es": "Enviar ↑",
+    "ko": "전송 ↑"
+  },
+  "字符详情": {
+    "zh-TW": "字元詳情",
+    "en": "Character details",
+    "ja": "文字の詳細",
+    "es": "Detalles del carácter",
+    "ko": "문자 상세"
+  },
+  "点击回答中的字符查看概率": {
+    "zh-TW": "點擊回答中的字元查看機率",
+    "en": "Select a character to inspect its probabilities",
+    "ja": "回答の文字を選択して確率を表示",
+    "es": "Selecciona un carácter para ver sus probabilidades",
+    "ko": "답변의 문자를 선택해 확률을 확인하세요"
+  },
+  "所选字符概率": {
+    "zh-TW": "所選字元機率",
+    "en": "Character probability",
+    "ja": "選択文字の確率",
+    "es": "Probabilidad del carácter",
+    "ko": "선택 문자 확률"
+  },
+  "概率 · 全部": {
+    "zh-TW": "機率 · 全部",
+    "en": "Probability · All",
+    "ja": "確率 · すべて",
+    "es": "Probabilidad · Todas",
+    "ko": "확률 · 전체"
+  },
+  "尚未开始": {
+    "zh-TW": "尚未開始",
+    "en": "Not started yet",
+    "ja": "未実装",
+    "es": "Aún no iniciado",
+    "ko": "아직 시작하지 않음"
+  },
+  "空格": {
+    "zh-TW": "空格",
+    "en": "Space",
+    "ja": "スペース",
+    "es": "Espacio",
+    "ko": "공백"
+  },
+  "换行": {
+    "zh-TW": "換行",
+    "en": "Newline",
+    "ja": "改行",
+    "es": "Salto de línea",
+    "ko": "줄바꿈"
+  },
+  "终止符": {
+    "zh-TW": "終止符",
+    "en": "END",
+    "ja": "終了",
+    "es": "FIN",
+    "ko": "종료"
+  },
+  "第 {n} 次判断": {
+    "zh-TW": "第 {n} 次判斷",
+    "en": "Decision {n}",
+    "ja": "判断 {n}",
+    "es": "Decisión {n}",
+    "ko": "판단 {n}"
+  },
+  "生成中…": {
+    "zh-TW": "生成中…",
+    "en": "Generating…",
+    "ja": "生成中…",
+    "es": "Generando…",
+    "ko": "생성 중…"
+  },
+  "已结束": {
+    "zh-TW": "已結束",
+    "en": "Finished",
+    "ja": "完了",
+    "es": "Finalizado",
+    "ko": "완료"
+  },
+  "已达字符上限 · 未完成": {
+    "zh-TW": "已達字元上限 · 未完成",
+    "en": "Character limit reached · Incomplete",
+    "ja": "文字数上限 · 未完了",
+    "es": "Límite alcanzado · Incompleto",
+    "ko": "글자 수 제한 · 미완료"
+  },
+  "已停止 · 未完成": {
+    "zh-TW": "已停止 · 未完成",
+    "en": "Stopped · Incomplete",
+    "ja": "停止 · 未完了",
+    "es": "Detenido · Incompleto",
+    "ko": "중지됨 · 미완료"
+  },
+  "连续两个空格，已停止 · 未完成": {
+    "zh-TW": "連續兩個空格，已停止 · 未完成",
+    "en": "Two consecutive spaces · Stopped · Incomplete",
+    "ja": "スペースが2つ連続したため停止 · 未完了",
+    "es": "Dos espacios consecutivos · Detenido · Incompleto",
+    "ko": "공백 두 개 연속 · 중지됨 · 미완료"
+  },
+  "连续五个相同字符，已停止 · 未完成": {
+    "zh-TW": "連續五個相同字元，已停止 · 未完成",
+    "en": "Five identical characters in a row · Stopped · Incomplete",
+    "ja": "同じ文字が5つ連続したため停止 · 未完了",
+    "es": "Cinco caracteres iguales seguidos · Detenido · Incompleto",
+    "ko": "동일한 문자 다섯 개 연속 · 중지됨 · 미완료"
+  },
+  "请求失败 · 未完成": {
+    "zh-TW": "請求失敗 · 未完成",
+    "en": "Request failed · Incomplete",
+    "ja": "リクエスト失敗 · 未完了",
+    "es": "Error de solicitud · Incompleto",
+    "ko": "요청 실패 · 미완료"
+  },
+  "{n} 个字符": {
+    "zh-TW": "{n} 個字元",
+    "en": "{n} characters",
+    "ja": "{n} 文字",
+    "es": "{n} caracteres",
+    "ko": "{n}자"
+  },
+  "消息或生成进度无效，请重新发送。": {
+    "zh-TW": "訊息或生成進度無效，請重新傳送。",
+    "en": "Invalid message or generation state. Please send again.",
+    "ja": "メッセージまたは生成状態が無効です。再送信してください。",
+    "es": "Mensaje o estado inválido. Vuelve a enviarlo.",
+    "ko": "메시지 또는 생성 상태가 잘못되었습니다. 다시 전송하세요."
+  }
+});
+Object.assign(messages, {
+  "查看完整输入": {
+    "zh-TW": "查看完整輸入",
+    "en": "View full input",
+    "ja": "入力全体を表示",
+    "es": "Ver entrada completa",
+    "ko": "전체 입력 보기"
+  },
+  "发送给 Jev 的完整输入": {
+    "zh-TW": "傳送給 Jev 的完整輸入",
+    "en": "Full input sent to Jev",
+    "ja": "Jev に送信した入力全体",
+    "es": "Entrada completa enviada a Jev",
+    "ko": "Jev에 보낸 전체 입력"
+  },
+  "该轮未记录输入。": {
+    "zh-TW": "該輪未記錄輸入。",
+    "en": "Input was not recorded for this step.",
+    "ja": "このステップの入力は記録されていません。",
+    "es": "No se registró la entrada de este paso.",
+    "ko": "이 단계의 입력이 기록되지 않았습니다."
+  }
+});
+// Drawing experiment UI copy.
+Object.assign(messages, {
+  "一段文字，一张点阵图，看 Jev 会画出个啥": {
+    "zh-TW": "一段文字，一張點陣圖，看 Jev 會畫出個啥",
+    "en": "A few words, a pixel canvas — see what Jev comes up with",
+    "ja": "言葉からドット絵へ、Jev は何を描いてくれる？",
+    "es": "Un texto, un lienzo de píxeles — a ver qué se le ocurre dibujar a Jev",
+    "ko": "글 한 줄로 픽셀 그림을, Jev는 뭘 그려 낼까요?"
+  },
+  "绘画设置": {
+    "zh-TW": "繪畫設定",
+    "en": "Drawing settings",
+    "ja": "描画設定",
+    "es": "Ajustes de dibujo",
+    "ko": "그림 설정"
+  },
+  "绘制模式": {
+    "zh-TW": "繪製模式",
+    "en": "Drawing mode",
+    "ja": "描画モード",
+    "es": "Modo de dibujo",
+    "ko": "그리기 모드"
+  },
+  "枚举法": {
+    "zh-TW": "枚舉法",
+    "en": "Enumeration",
+    "ja": "全走査",
+    "es": "Enumeración",
+    "ko": "전수 탐색"
+  },
+  "蒙特卡洛法": {
+    "zh-TW": "蒙地卡羅法",
+    "en": "Monte Carlo",
+    "ja": "モンテカルロ",
+    "es": "Monte Carlo",
+    "ko": "몬테카를로"
+  },
+  "圆珠笔": {
+    "zh-TW": "原子筆",
+    "en": "Ballpoint",
+    "ja": "ボールペン",
+    "es": "Bolígrafo",
+    "ko": "볼펜"
+  },
+  "想让 Jev 画什么？": {
+    "zh-TW": "想讓 Jev 畫什麼？",
+    "en": "What should Jev draw?",
+    "ja": "Jev に何を描いてほしい？",
+    "es": "¿Qué debe dibujar Jev?",
+    "ko": "Jev가 무엇을 그릴까요?"
+  },
+  "例如：一只坐着的猫": {
+    "zh-TW": "例如：一隻坐著的貓",
+    "en": "For example: a sitting cat",
+    "ja": "例：座っている猫",
+    "es": "Por ejemplo: un gato sentado",
+    "ko": "예: 앉아 있는 고양이"
+  },
+  "开始绘画 ↗": {
+    "zh-TW": "開始繪畫 ↗",
+    "en": "Start drawing ↗",
+    "ja": "描画開始 ↗",
+    "es": "Dibujar ↗",
+    "ko": "그리기 시작 ↗"
+  },
+  "画布分辨率": {
+    "zh-TW": "畫布解析度",
+    "en": "Canvas resolution",
+    "ja": "キャンバス解像度",
+    "es": "Resolución",
+    "ko": "캔버스 해상도"
+  },
+  "点阵画布": {
+    "zh-TW": "點陣畫布",
+    "en": "Pixel canvas",
+    "ja": "ピクセルキャンバス",
+    "es": "Lienzo de píxeles",
+    "ko": "픽셀 캔버스"
+  },
+  "黑白点阵画布": {
+    "zh-TW": "黑白點陣畫布",
+    "en": "Black and white pixel canvas",
+    "ja": "白黒ピクセルキャンバス",
+    "es": "Lienzo en blanco y negro",
+    "ko": "흑백 픽셀 캔버스"
+  },
+  "点击判断查看详情": {
+    "zh-TW": "點擊判斷查看詳情",
+    "en": "Select a judgment to inspect it",
+    "ja": "判断を選択して詳細を表示",
+    "es": "Selecciona una decisión para ver detalles",
+    "ko": "판단을 선택해 자세히 보기"
+  },
+  "从左上到右下，用 Noul 逐格判断画黑或留白。": {
+    "zh-TW": "從左上到右下，用 Noul 逐格判斷畫黑或留白。",
+    "en": "Scan left to right, top to bottom. Noul decides black or white for each pixel.",
+    "ja": "左上から右下へ、Noul が各マスを黒か白か判断します。",
+    "es": "De izquierda a derecha y de arriba abajo, Noul decide negro o blanco.",
+    "ko": "왼쪽 위부터 오른쪽 아래까지 Noul이 각 칸을 검정 또는 흰색으로 판단합니다."
+  },
+  "每次选择一个格子或结束；画满或连续三次选择同一点时停止。": {
+    "zh-TW": "每次選擇一個格子或結束；畫滿或連續三次選擇同一點時停止。",
+    "en": "Choose a pixel or finish. Stops when full or after choosing the same pixel three times in a row.",
+    "ja": "マスまたは終了を選択。全マスが黒、または同じマスを3回連続で選ぶと停止。",
+    "es": "Elige un píxel o termina. Se detiene al llenar el lienzo o repetir el mismo punto tres veces seguidas.",
+    "ko": "칸 또는 종료를 선택합니다. 캔버스가 가득 차거나 같은 칸을 세 번 연속 선택하면 멈춥니다."
+  },
+  "落笔后沿相邻八方向移动，也可抬笔重选；画满或落笔与移动次数超过格子总数时停止。": {
+    "zh-TW": "落筆後沿相鄰八方向移動，也可提筆重選；畫滿或落筆與移動次數超過格子總數時停止。",
+    "en": "Move in eight adjacent directions or lift to start another stroke. Stops when full or when marks exceed the pixel count.",
+    "ja": "隣接8方向に移動、またはペンを上げて再開。全マスが黒、または描画回数がマス数を超えると停止。",
+    "es": "Mueve en ocho direcciones o levanta el bolígrafo. Termina al llenar el lienzo o superar el número de píxeles en trazos.",
+    "ko": "인접한 8방향으로 이동하거나 펜을 뗍니다. 캔버스가 차거나 그린 횟수가 칸 수를 초과하면 멈춥니다."
+  },
+  "准备好了，慢慢画。": {
+    "zh-TW": "準備好了，慢慢畫。",
+    "en": "Ready, one pixel at a time.",
+    "ja": "準備完了。一点ずつ描こう。",
+    "es": "Listo, píxel a píxel.",
+    "ko": "준비 완료, 한 칸씩 그려요."
+  },
+  "正在绘画…": {
+    "zh-TW": "正在繪畫…",
+    "en": "Drawing…",
+    "ja": "描画中…",
+    "es": "Dibujando…",
+    "ko": "그리는 중…"
+  },
+  "绘画完成": {
+    "zh-TW": "繪畫完成",
+    "en": "Drawing complete",
+    "ja": "描画完了",
+    "es": "Dibujo terminado",
+    "ko": "그림 완성"
+  },
+  "画布已画满，已结束": {
+    "zh-TW": "畫布已畫滿，已結束",
+    "en": "Canvas full · finished",
+    "ja": "全マス描画済み・終了",
+    "es": "Lienzo lleno · terminado",
+    "ko": "캔버스 가득 참 · 종료"
+  },
+  "连续三次选择同一点，已结束": {
+    "zh-TW": "連續三次選擇同一點，已結束",
+    "en": "Same pixel three times in a row · finished",
+    "ja": "同じマスを3回連続で選択・終了",
+    "es": "Mismo punto tres veces seguidas · terminado",
+    "ko": "같은 칸 세 번 연속 선택 · 종료"
+  },
+  "绘制步数超过格子总数，已结束": {
+    "zh-TW": "繪製步數超過格子總數，已結束",
+    "en": "Marks exceeded pixel count · finished",
+    "ja": "描画回数がマス数を超えました・終了",
+    "es": "Se superó el número de píxeles en trazos · terminado",
+    "ko": "그린 횟수가 칸 수 초과 · 종료"
+  },
+  "已停止 · 已保留画布和判断": {
+    "zh-TW": "已停止 · 已保留畫布和判斷",
+    "en": "Stopped · canvas and judgments preserved",
+    "ja": "停止・描画と判断を保持",
+    "es": "Detenido · dibujo y decisiones conservados",
+    "ko": "중지됨 · 그림과 판단 보존"
+  },
+  "请求失败 · 已保留画布和判断": {
+    "zh-TW": "請求失敗 · 已保留畫布和判斷",
+    "en": "Request failed · canvas and judgments preserved",
+    "ja": "リクエスト失敗・描画と判断を保持",
+    "es": "Solicitud fallida · dibujo y decisiones conservados",
+    "ko": "요청 실패 · 그림과 판단 보존"
+  },
+  "画黑": {
+    "zh-TW": "畫黑",
+    "en": "Black",
+    "ja": "黒にする",
+    "es": "Negro",
+    "ko": "검정"
+  },
+  "留白": {
+    "zh-TW": "留白",
+    "en": "White",
+    "ja": "白のまま",
+    "es": "Blanco",
+    "ko": "흰색"
+  },
+  "结束绘画": {
+    "zh-TW": "結束繪畫",
+    "en": "Finish",
+    "ja": "描画終了",
+    "es": "Terminar",
+    "ko": "그림 종료"
+  },
+  "结束这一笔": {
+    "zh-TW": "結束這一筆",
+    "en": "Lift pen",
+    "ja": "ペンを上げる",
+    "es": "Levantar",
+    "ko": "펜 떼기"
+  },
+  "逐格判断": {
+    "zh-TW": "逐格判斷",
+    "en": "Pixel judgment",
+    "ja": "マスの判断",
+    "es": "Decisión de píxel",
+    "ko": "칸 판단"
+  },
+  "选择落点": {
+    "zh-TW": "選擇落點",
+    "en": "Place pen",
+    "ja": "開始点を選ぶ",
+    "es": "Elegir punto",
+    "ko": "시작점 선택"
+  },
+  "移动 / 抬笔": {
+    "zh-TW": "移動 / 提筆",
+    "en": "Move / lift",
+    "ja": "移動 / ペンを上げる",
+    "es": "Mover / levantar",
+    "ko": "이동 / 펜 떼기"
+  },
+  "已画黑 {n} / {total} 格": {
+    "zh-TW": "已畫黑 {n} / {total} 格",
+    "en": "{n} / {total} black pixels",
+    "ja": "{n} / {total} マスが黒",
+    "es": "{n} / {total} píxeles negros",
+    "ko": "{n} / {total} 칸 검정"
+  },
+  "已扫描 {n} 格": {
+    "zh-TW": "已掃描 {n} 格",
+    "en": "{n} pixels scanned",
+    "ja": "{n} マス判定済み",
+    "es": "{n} píxeles evaluados",
+    "ko": "{n} 칸 확인"
+  },
+  "绘制 {n} 步": {
+    "zh-TW": "繪製 {n} 步",
+    "en": "{n} marks",
+    "ja": "{n} 回描画",
+    "es": "{n} trazos",
+    "ko": "{n} 회 그림"
+  },
+  "↑ 上": {
+    "zh-TW": "↑ 上",
+    "en": "↑ Up",
+    "ja": "↑ 上",
+    "es": "↑ Arriba",
+    "ko": "↑ 위"
+  },
+  "↗ 右上": {
+    "zh-TW": "↗ 右上",
+    "en": "↗ Up-right",
+    "ja": "↗ 右上",
+    "es": "↗ Arriba derecha",
+    "ko": "↗ 오른쪽 위"
+  },
+  "→ 右": {
+    "zh-TW": "→ 右",
+    "en": "→ Right",
+    "ja": "→ 右",
+    "es": "→ Derecha",
+    "ko": "→ 오른쪽"
+  },
+  "↘ 右下": {
+    "zh-TW": "↘ 右下",
+    "en": "↘ Down-right",
+    "ja": "↘ 右下",
+    "es": "↘ Abajo derecha",
+    "ko": "↘ 오른쪽 아래"
+  },
+  "↓ 下": {
+    "zh-TW": "↓ 下",
+    "en": "↓ Down",
+    "ja": "↓ 下",
+    "es": "↓ Abajo",
+    "ko": "↓ 아래"
+  },
+  "↙ 左下": {
+    "zh-TW": "↙ 左下",
+    "en": "↙ Down-left",
+    "ja": "↙ 左下",
+    "es": "↙ Abajo izquierda",
+    "ko": "↙ 왼쪽 아래"
+  },
+  "← 左": {
+    "zh-TW": "← 左",
+    "en": "← Left",
+    "ja": "← 左",
+    "es": "← Izquierda",
+    "ko": "← 왼쪽"
+  },
+  "↖ 左上": {
+    "zh-TW": "↖ 左上",
+    "en": "↖ Up-left",
+    "ja": "↖ 左上",
+    "es": "↖ Arriba izquierda",
+    "ko": "↖ 왼쪽 위"
+  }
+});
+Object.assign(messages, {
+  "推理模型": {
+    "zh-TW": "推理模型",
+    "en": "Inference model",
+    "ja": "推論モデル",
+    "es": "Modelo de inferencia",
+    "ko": "추론 모델"
+  },
+  "Laya · 本地": {
+    "zh-TW": "Laya · 本機",
+    "en": "Laya · Local",
+    "ja": "Laya · ローカル",
+    "es": "Laya · Local",
+    "ko": "Laya · 로컬"
+  },
+  "正在连接模型…": {
+    "zh-TW": "正在連線模型…",
+    "en": "Connecting to model…",
+    "ja": "モデルに接続中…",
+    "es": "Conectando al modelo…",
+    "ko": "모델 연결 중…"
+  }
+});
+Object.assign(messages, {
+  "让 Jev 一个字符一个字符地回复你": {
+    "zh-TW": "讓 Jev 一個字元一個字元地回覆你",
+    "en": "Let Jev reply to you, one character at a time",
+    "ja": "Jev が一文字ずつあなたに返信",
+    "es": "Deja que Jev te responda, un carácter a la vez",
+    "ko": "Jev가 한 글자씩 답해 드려요"
+  }
+});
 const supportedLanguages = ['zh-CN', 'zh-TW', 'en', 'ja', 'es', 'ko'];
 function initialLanguage() {
   try { const saved = localStorage.getItem('jev-language'); if (supportedLanguages.includes(saved)) return saved; } catch (_) {}
@@ -1052,26 +1581,35 @@ function initialLanguage() {
   return supportedLanguages.find((value) => language.startsWith(value)) || 'zh-CN';
 }
 let locale = initialLanguage();
+let uiModelName = 'Jev';
+function modelCopy(text) {
+  return text.replace(/Jev|JEV/g, name => name === 'JEV' ? uiModelName.toUpperCase() : uiModelName);
+}
 function t(key, values = {}) {
   if (key === undefined || key === null) return '';
-  return (messages[key]?.[locale] || String(key)).replace(/\{(\w+)\}/g, (match, name) => values[name] ?? match);
+  return modelCopy(messages[key]?.[locale] || String(key)).replace(/\{(\w+)\}/g, (match, name) => values[name] ?? match);
 }
 // Capture original static copy once, before the app starts updating live text.
 const staticCopy = [];
 const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
 while (walker.nextNode()) {
   const element = walker.currentNode, source = element.textContent.trim();
-  if (messages[source]) staticCopy.push({element, source});
+  if (messages[source] || /Jev|JEV/.test(source)) staticCopy.push({element, source});
 }
 const staticAttributes = [];
 document.querySelectorAll('[aria-label], [placeholder], meta[name="description"]').forEach((element) => {
   for (const name of ['aria-label', 'placeholder', 'content']) {
     const source = element.getAttribute(name);
-    if (messages[source]) staticAttributes.push({element, name, source});
+    if (source && (messages[source] || /Jev|JEV/.test(source))) staticAttributes.push({element, name, source});
   }
 });
+function pageTitle(page) {
+  return {calculator: 'Dumb Calculator', chat: 'Dumb Chat', draw: 'Dumb Canvas'}[page] || 'Dumb Calculator';
+}
 function translatePage() {
   document.documentElement.lang = locale;
+  const page = document.querySelector('[data-page][aria-selected="true"]')?.dataset.page || 'calculator';
+  document.title = t(`${pageTitle(page)} · Jev`);
   staticCopy.forEach(({element, source}) => { if (element.isConnected) element.textContent = t(source); });
   staticAttributes.forEach(({element, name, source}) => element.setAttribute(name, t(source)));
 }

@@ -13,3 +13,7 @@ outputs/
 .vercel/
 .vercel
 .env*
+
+# Optional local Laya runtime and weights
+.venv-laya/
+.cache-laya/

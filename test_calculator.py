@@ -57,6 +57,8 @@ class CalculatorTests(unittest.TestCase):
         self.assertEqual(events[-1]["result"], "102")
         self.assertEqual(events[-1]["tokens"], 60)
         self.assertEqual(calls[2]["state"]["predicted_digits_right_to_left"], ["2", "0"])
+        judgments = [e for e in events if e["event"] in ("sign", "digit")]
+        self.assertEqual([e["request"] for e in judgments], [calls[0], *calls])
         for call in calls:
             self.assertEqual(set(call["state"]), {"expression", "predicted_digits_right_to_left"})
             self.assertEqual(set(call["questions"]["digit"]["criteria"]), set(DIGITS))

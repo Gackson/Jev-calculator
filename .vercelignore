@@ -10,3 +10,9 @@ test_*.py
 .agents
 .codex
 node_modules
+
+# Optional local Laya runtime and weights
+.venv-laya/
+.cache-laya/
+laya_client.py
+requirements-laya.txt

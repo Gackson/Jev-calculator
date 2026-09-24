@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Local Jev digit-by-digit calculator. Python 3.9+, standard library only."""
 import argparse
+import copy
 import ast
 from fractions import Fraction
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -14,7 +15,7 @@ import random
 import threading
 import time
 
-from typesafe_client import ApiFailure, system_one, probability
+from typesafe_client import model_matches, ApiFailure, system_one, probability
 
 ROOT = Path(__file__).resolve().parent
 MAX_DIGITS = 24
@@ -119,12 +120,13 @@ def predict(expression, model, token, cancelled, call=None, max_digits=MAX_DIGIT
         if include_context:
             state["predicted_digits_right_to_left"] = list(digits)
         payload = {"model": model, "state": state, "questions": questions}
+        request_input = copy.deepcopy(payload)
         tick = time.monotonic()
         response = call(payload)
         if cancelled.is_set():
             yield {"event": "cancelled"}
             return
-        if not isinstance(response.get("model"), str) or not response["model"].startswith("jev"):
+        if not model_matches(response.get("model"), model):
             raise ValueError("JEV 返回了未知模型。")
         answers = response.get("answers", {})
         if set(answers) != set(questions):
@@ -133,9 +135,10 @@ def predict(expression, model, token, cancelled, call=None, max_digits=MAX_DIGIT
         if position == 0:
             sign = validate_choice(answers["sign"], SIGN)
             negative = sign["choice"] == "negative"
-            yield {"event": "sign", **sign}
+            yield {"event": "sign", "request": request_input, **sign}
         answer = validate_choice(answers["digit"], DIGITS)
         yield {"event": "digit", "position": position, "model": response["model"],
+               "request": request_input,
                "latency_ms": round((time.monotonic() - tick) * 1000), **answer}
         if answer["choice"] == "END":
             result = str(int(("-" if negative else "") + "".join(reversed(digits)))) if digits else None
@@ -210,16 +213,19 @@ def predict_noul(expression, model, token, cancelled, upper, target, call=None, 
             questions["sign"] = {"type": "noul", "instructions": ARITHMETIC +
                 "Is the resulting integer strictly negative? Zero is not negative."}
         tick = time.monotonic()
-        response = call({"model": model, "state": {"expression": expression, **state}, "questions": questions})
+        payload = {"model": model, "state": {"expression": expression, **state}, "questions": questions}
+        request_input = copy.deepcopy(payload)
+        response = call(payload)
         if cancelled.is_set():
             return {}, {}, None
-        if not isinstance(response.get("model"), str) or not response["model"].startswith("jev"):
+        if not model_matches(response.get("model"), model):
             raise ValueError("JEV 返回了未知模型。")
         answers = response.get("answers", {})
         if set(answers) != set(questions):
             raise ValueError("JEV 返回的问题数量不匹配。")
         total_tokens += sum(response.get("usage", {}).get(k, 0) for k in ("input_tokens", "output_tokens"))
-        metadata = {"model": response["model"], "latency_ms": round((time.monotonic() - tick) * 1000)}
+        metadata = {"model": response["model"], "latency_ms": round((time.monotonic() - tick) * 1000),
+                    "request": request_input}
         sign = None
         if first:
             decision = validate_noul(answers["sign"])
@@ -367,15 +373,32 @@ def local_api_key(env=None, dotenv_path=None):
     return normalize_api_key(value) if value.strip() else ""
 
 
+def default_provider(local_key, laya):
+    """Prefer a configured TypeSafe key, then usable local Laya, then BYOK."""
+    return "typesafe" if local_key or not laya.available() else "laya"
+
+
 class CalculatorServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, address, model, local_key=""):
+    def __init__(self, address, model, local_key="", provider="auto", laya_path=None, laya_device="auto"):
         super().__init__(address, Handler)
         self.model = model
         self.local_key = local_key
+        from laya_client import LayaClient
+        self.laya = LayaClient(laya_path, laya_device)
+        self.provider = default_provider(local_key, self.laya) if provider == "auto" else provider
         self.runs = {}
         self.run_lock = threading.Lock()
+
+
+    def resolve_backend(self, provider=None):
+        provider = self.provider if provider is None else provider
+        if provider == "laya":
+            return self.laya.model, self.laya
+        if provider == "typesafe":
+            return self.model, None
+        raise ValueError("未知推理后端。")
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -396,8 +419,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/api/config":
-            return self.json_response(200, {"model": self.server.model, "auth_mode": "environment" if getattr(self.server, "local_key", "") else "byok", "max_digits": MAX_DIGITS})
-        routes = {"/": ("index.html", "text/html"), "/app.js": ("app.js", "text/javascript"), "/i18n.js": ("i18n.js", "text/javascript"), "/style.css": ("style.css", "text/css")}
+            config = {"model": self.server.model, "auth_mode": "environment" if getattr(self.server, "local_key", "") else "byok", "max_digits": MAX_DIGITS}
+            if hasattr(self.server, "provider"):
+                config.update(provider=self.server.provider, providers=["typesafe", "laya"])
+            return self.json_response(200, config)
+        routes = {"/": ("index.html", "text/html"), "/app.js": ("app.js", "text/javascript"), "/chat.js": ("chat.js", "text/javascript"), "/draw.js": ("draw.js", "text/javascript"), "/i18n.js": ("i18n.js", "text/javascript"), "/style.css": ("style.css", "text/css")}
         if self.path not in routes:
             return self.json_response(404, {"error": "页面不存在。"})
         filename, kind = routes[self.path]
@@ -405,9 +431,19 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write((ROOT / "calculator_ui" / filename).read_bytes())
 
     def do_POST(self):
+        backend_options = ({"backend_resolver": self.server.resolve_backend}
+                           if hasattr(self.server, "resolve_backend") else {})
+        if self.path == "/api/draw":
+            from step_api import handle_step
+            from draw_api import draw_step
+            return handle_step(self, self.server.model, local_token=getattr(self.server, "local_key", ""), operation=draw_step, **backend_options)
+        if self.path == "/api/chat":
+            from step_api import handle_step
+            from chat_api import chat_step
+            return handle_step(self, self.server.model, local_token=getattr(self.server, "local_key", ""), operation=chat_step, **backend_options)
         if self.path == "/api/step":
             from step_api import handle_step
-            return handle_step(self, self.server.model, local_token=getattr(self.server, "local_key", ""))
+            return handle_step(self, self.server.model, local_token=getattr(self.server, "local_key", ""), **backend_options)
         # Browser requests must originate from this exact local page.
         origin = self.headers.get("Origin")
         expected = f"http://{self.headers.get('Host')}"
@@ -447,7 +483,9 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, TypeError, RecursionError) as exc:
             return self.json_response(400, {"error": str(exc)})
         try:
-            token = getattr(self.server, "local_key", "") or request_api_key(self.headers.get("Authorization"))
+            model, call = (self.server.resolve_backend(self.headers.get("X-Inference-Provider"))
+                           if backend_options else (self.server.model, None))
+            token = "" if call is not None else getattr(self.server, "local_key", "") or request_api_key(self.headers.get("Authorization"))
         except ValueError as exc:
             return self.json_response(401, {"error": str(exc)})
         event = threading.Event()
@@ -464,8 +502,8 @@ class Handler(BaseHTTPRequestHandler):
                   "integer_target": str(int(actual)), "max_digits": MAX_DIGITS, "mode": mode,
                   "include_context": include_context, "strategy": strategy, "upper": str(upper) if upper is not None else None})
             try:
-                events = (predict_noul(expression, self.server.model, token, event, upper, int(actual), strategy=strategy)
-                          if mode == "noul" else predict(expression, self.server.model, token, event,
+                events = (predict_noul(expression, model, token, event, upper, int(actual), strategy=strategy, call=call)
+                          if mode == "noul" else predict(expression, model, token, event, call=call,
                                                         include_context=include_context))
                 for item in audit_judgments(events, int(actual)):
                     if item["event"] == "done":
@@ -490,12 +528,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--model", default="jev-1.13.0")
+    parser.add_argument("--provider", choices=("auto", "typesafe", "laya"), default="auto")
+    parser.add_argument("--laya-path", help="Local checkpoint directory containing rl_agent_config.json")
+    parser.add_argument("--laya-device", choices=("auto", "cpu", "mps", "cuda"), default="auto")
     args = parser.parse_args()
     try:
         key = local_api_key()
     except ValueError as exc:
-        parser.error(str(exc))
-    server = CalculatorServer(("127.0.0.1", args.port), args.model, local_key=key)
+        if args.provider != "laya":
+            parser.error(str(exc))
+        key = ""
+        print("环境 Key 无效，已忽略；Laya 本地推理不需要 Key。", flush=True)
+    server = CalculatorServer(("127.0.0.1", args.port), args.model, local_key=key, provider=args.provider,
+                              laya_path=args.laya_path, laya_device=args.laya_device)
     print(f"Jev calculator: http://127.0.0.1:{args.port}", flush=True)
     try:
         server.serve_forever()
