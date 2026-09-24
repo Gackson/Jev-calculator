@@ -1,10 +1,11 @@
-"""One Jev Choice per output character; no generated text is repaired or sampled."""
+"""One Jev Choice per output character or word; selections are never repaired or sampled."""
 import string
 import copy
 import time
 
 from calculator import validate_choice, notes_context, model_request
 from typesafe_client import model_matches, system_one
+from chat_words import WORD_OPTIONS, WORD_INSTRUCTIONS, repeated_word, render_words, word_piece
 
 MAX_CHARACTERS = 256
 CHARACTERS = string.ascii_uppercase + string.digits + " .,?!'\"-:;()/+=" + "\n"
@@ -38,43 +39,70 @@ def chat_step(body, token, model='jev-1.13.0', call=None):
     if not isinstance(body, dict):
         raise ValueError('Invalid request')
     extra_context = notes_context(body.get('notes', ''))
+    mode = body.get('mode', 'character')
+    if mode not in ('character', 'word'):
+        raise ValueError('Invalid chat mode')
     prompt, prefix = body.get('message'), body.get('reply', '')
-    limit, history = body.get('max_characters', 128), body.get('history', [])
+    limit = body.get('max_steps', 64) if mode == 'word' else body.get('max_characters', 128)
+    history = body.get('history', [])
     if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 1000:
         raise ValueError('Invalid message')
-    if type(limit) is not int or not 1 <= limit <= MAX_CHARACTERS:
-        raise ValueError('Invalid character limit')
-    if (not isinstance(prefix, str) or len(prefix) >= limit or prefix.endswith('  ')
-            or repeated_character(prefix)
-            or any(c not in CHARACTERS for c in prefix)):
+    if type(limit) is not int or not 1 <= limit <= (128 if mode == 'word' else MAX_CHARACTERS):
+        raise ValueError('Invalid step limit' if mode == 'word' else 'Invalid character limit')
+    choices = body.get('choices', [])
+    if mode == 'word':
+        if (not isinstance(choices, list) or len(choices) >= limit
+                or any(not isinstance(c, str) or c not in WORD_OPTIONS or c == 'END' for c in choices)
+                or repeated_word(choices)):
+            raise ValueError('Invalid word progress')
+        if not isinstance(prefix, str) or prefix != render_words(choices):
+            raise ValueError('Invalid word reply')
+    elif (not isinstance(prefix, str) or len(prefix) >= limit or prefix.endswith('  ')
+          or repeated_character(prefix) or any(c not in CHARACTERS for c in prefix)):
         raise ValueError('Invalid reply prefix')
     if not isinstance(history, list) or len(history) > 6:
         raise ValueError('Invalid history')
     clean_history = []
     for item in history:
         if (not isinstance(item, dict) or item.get('role') not in ('user', 'assistant')
-                or not isinstance(item.get('content'), str) or len(item['content']) > 1000):
+                or not isinstance(item.get('content'), str) or len(item['content']) > 4096):
             raise ValueError('Invalid history entry')
         clean_history.append({'role': item['role'], 'content': item['content']})
-    payload = model_request(model, {'conversation': clean_history, 'user_message': prompt,
-                            'reply_so_far': prefix, **extra_context}, {'character': {
-                                'type': 'choice', 'instructions': INSTRUCTIONS, 'criteria': OPTIONS}})
+    question_id = 'word' if mode == 'word' else 'character'
+    criteria = WORD_OPTIONS if mode == 'word' else OPTIONS
+    state = {'conversation': clean_history, 'user_message': prompt, 'reply_so_far': prefix, **extra_context}
+    if mode == 'word':
+        state['selected_words_and_marks'] = list(choices)
+    payload = model_request(model, state, {question_id: {
+        'type': 'choice', 'instructions': WORD_INSTRUCTIONS if mode == 'word' else INSTRUCTIONS,
+        'criteria': criteria}})
     started = time.monotonic()
     request_input = copy.deepcopy(payload)
     response = (call or (lambda payload: system_one(token, payload)))(payload)
     if (not isinstance(response, dict) or not model_matches(response.get('model'), model) or not isinstance(response.get('answers'), dict)
-            or set(response['answers']) != {'character'}):
+            or set(response['answers']) != {question_id}):
         raise ValueError('Invalid model response')
-    answer = validate_choice(response['answers']['character'], OPTIONS)
-    character = VALUES[answer['choice']]
-    reply = prefix + character
+    answer = validate_choice(response['answers'][question_id], criteria)
+    if mode == 'word':
+        added, separator = word_piece(prefix, answer['choice'])
+        character = added[len(separator):]
+    else:
+        character, separator = VALUES[answer['choice']], ''
+        added = character
+    reply = prefix + added
     usage = response.get('usage', {})
     tokens = sum(usage.get(key, 0) for key in ('input_tokens', 'output_tokens'))
-    status = ('complete' if answer['choice'] == 'END' else
-              'repeated_space' if reply.endswith('  ') else
-              'repeated_character' if repeated_character(reply) else
-              'limit' if len(reply) >= limit else 'continue')
+    if mode == 'word':
+        status = ('complete' if answer['choice'] == 'END' else
+                  'repeated_word' if repeated_word(choices + [answer['choice']]) else
+                  'limit' if len(choices) + 1 >= limit else 'continue')
+    else:
+        status = ('complete' if answer['choice'] == 'END' else
+                  'repeated_space' if reply.endswith('  ') else
+                  'repeated_character' if repeated_character(reply) else
+                  'limit' if len(reply) >= limit else 'continue')
     return {'step': {**answer, 'character': character, 'position': len(prefix),
+                     'mode': mode, 'separator': separator,
                      'request': request_input,
                      'model': response['model'], 'latency_ms': round((time.monotonic() - started) * 1000),
                      'tokens': tokens}, 'reply': reply,

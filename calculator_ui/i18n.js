@@ -1568,6 +1568,78 @@ Object.assign(messages, {
     "ko": "매 판단에 이 내용을 함께 보내요. 자유롭게 쓰거나 비워 두세요."
   }
 });
+Object.assign(messages, {
+  "输出模式": {
+    "zh-TW": "輸出模式",
+    "en": "Output mode",
+    "ja": "出力モード",
+    "es": "Modo de salida",
+    "ko": "출력 모드"
+  },
+  "字符": {
+    "zh-TW": "字元",
+    "en": "Character",
+    "ja": "文字",
+    "es": "Carácter",
+    "ko": "문자"
+  },
+  "单词": {
+    "zh-TW": "單詞",
+    "en": "Word",
+    "ja": "単語",
+    "es": "Palabra",
+    "ko": "단어"
+  },
+  "步数上限": {
+    "zh-TW": "步數上限",
+    "en": "Max steps",
+    "ja": "ステップ上限",
+    "es": "Máx. pasos",
+    "ko": "최대 단계"
+  },
+  "让 Jev 一个单词一个单词地回复你": {
+    "zh-TW": "讓 Jev 一個單詞一個單詞地回覆你",
+    "en": "Let Jev reply one word at a time",
+    "ja": "Jev が一単語ずつ返信します",
+    "es": "Deja que Jev responda palabra por palabra",
+    "ko": "Jev가 한 단어씩 답하게 해보세요"
+  },
+  "点击回答中的字符或单词查看概率": {
+    "zh-TW": "點擊回答中的字元或單詞查看機率",
+    "en": "Select a character or word to inspect probabilities",
+    "ja": "回答の文字や単語を選択して確率を表示",
+    "es": "Selecciona un carácter o una palabra para ver probabilidades",
+    "ko": "답변의 문자나 단어를 선택해 확률을 확인하세요"
+  },
+  "所选项概率": {
+    "zh-TW": "所選項機率",
+    "en": "Selected option probability",
+    "ja": "選択項目の確率",
+    "es": "Probabilidad de la opción",
+    "ko": "선택 항목 확률"
+  },
+  "连续五次选择相同词或标记，已停止 · 未完成": {
+    "zh-TW": "連續五次選擇相同詞或標記，已停止 · 未完成",
+    "en": "Five identical selections in a row · Stopped · Incomplete",
+    "ja": "同じ選択が5回連続したため停止 · 未完了",
+    "es": "Cinco selecciones iguales seguidas · Detenido · Incompleto",
+    "ko": "동일한 선택 다섯 번 연속 · 중지됨 · 미완료"
+  },
+  "已达步数上限 · 未完成": {
+    "zh-TW": "已達步數上限 · 未完成",
+    "en": "Step limit reached · Incomplete",
+    "ja": "ステップ上限 · 未完了",
+    "es": "Límite de pasos alcanzado · Incompleto",
+    "ko": "단계 제한 도달 · 미완료"
+  },
+  "{n} 个词 · {steps} 次判断": {
+    "zh-TW": "{n} 個詞 · {steps} 次判斷",
+    "en": "{n} words · {steps} decisions",
+    "ja": "{n} 単語 · {steps} 回の判断",
+    "es": "{n} palabras · {steps} decisiones",
+    "ko": "{n}개 단어 · {steps}회 판단"
+  }
+});
 const supportedLanguages = ['zh-CN', 'zh-TW', 'en', 'ja', 'es', 'ko'];
 function initialLanguage() {
   try { const saved = localStorage.getItem('jev-language'); if (supportedLanguages.includes(saved)) return saved; } catch (_) {}

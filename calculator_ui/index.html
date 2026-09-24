@@ -57,24 +57,24 @@
     <section class="trace-section"><div class="trace-header"><h2>判断列表 <span id="step-count">00</span></h2></div><div id="trace" class="judgment-list"><p class="trace-empty">Jev的每次判断记录在这里</p></div></section>
     </div>
     <section id="page-chat" role="tabpanel" aria-labelledby="tab-chat" hidden>
-      <div class="intro"><h1>Dumb Chat<span>.</span></h1><p class="tagline">让 Jev 一个字符一个字符地回复你</p></div>
+      <div class="intro"><h1>Dumb Chat<span>.</span></h1><p class="tagline" id="chat-tagline">让 Jev 一个字符一个字符地回复你</p></div>
       <div class="chat-workspace">
         <section class="chat-thread" aria-label="对话">
-          <div class="chat-toolbar"><h2>Chat</h2><button class="key-button" id="chat-clear" type="button">新对话</button></div>
+          <div class="chat-toolbar"><div class="chat-toolbar-title"><h2>Chat</h2><div class="mode-switch chat-mode-switch" role="group" aria-label="输出模式"><button type="button" id="chat-mode-character" aria-pressed="true">字符</button><button type="button" id="chat-mode-word" aria-pressed="false">单词</button></div></div><button class="key-button" id="chat-clear" type="button">新对话</button></div>
           <div class="chat-messages" id="chat-messages"><p class="chat-empty" id="chat-empty">输入消息，开始对话</p></div>
           <form id="chat-form" class="chat-composer">
             <label class="sr-only" for="chat-input">输入消息</label>
             <textarea id="chat-input" rows="2" maxlength="1000" placeholder="输入消息…" required></textarea>
-            <div class="chat-composer-actions"><label for="chat-limit"><span>字符上限</span><select id="chat-limit"><option>64</option><option selected>128</option><option>256</option></select></label><div><button type="button" class="stop" id="chat-stop" hidden>停止</button><button type="submit" class="primary" id="chat-send">发送 ↑</button></div></div>
+            <div class="chat-composer-actions"><label for="chat-limit"><span id="chat-limit-label">字符上限</span><select id="chat-limit"><option>64</option><option selected>128</option><option>256</option></select></label><div><button type="button" class="stop" id="chat-stop" hidden>停止</button><button type="submit" class="primary" id="chat-send">发送 ↑</button></div></div>
             <p id="chat-error" class="key-error" role="alert" hidden></p>
           </form>
         </section>
-        <aside class="inspector chat-inspector" aria-label="字符详情">
+        <aside class="inspector chat-inspector" aria-label="判断详情">
           <div class="section-top"><h2>判断显微镜</h2></div>
-          <p id="chat-detail-empty" class="chat-detail-empty">点击回答中的字符查看概率</p>
+          <p id="chat-detail-empty" class="chat-detail-empty">点击回答中的字符或单词查看概率</p>
           <div id="chat-detail" hidden>
             <div class="detail-heading"><span id="chat-position"></span><strong id="chat-choice"></strong></div>
-            <div class="confidence"><span>所选字符概率</span><strong id="chat-probability"></strong></div>
+            <div class="confidence"><span>所选项概率</span><strong id="chat-probability"></strong></div>
             <div class="confidence"><span>判断置信度</span><strong id="chat-confidence"></strong></div>
             <div class="top-label"><span>候选选项</span><span>概率 · 全部</span></div>
             <div id="chat-candidates"></div>

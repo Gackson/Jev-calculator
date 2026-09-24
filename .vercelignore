@@ -10,6 +10,8 @@ test_*.py
 .agents
 .codex
 node_modules
+output/
+outputs/
 
 # Optional local Laya runtime and weights
 .venv-laya/
