@@ -106,6 +106,7 @@
     if (needsApiKey()) { openKeyDialog(); return; }
     const history = turns.slice(-3).flatMap((turn) => [{role: 'user', content: turn.prompt}, {role: 'assistant', content: turn.reply}]);
     const limit = Number($('chat-limit').value);
+    const notes = globalNotes();
     running = true; stopping = false; selection = null; updateControls();
     $('chat-request').open = false;
     $('chat-error').hidden = true; $('chat-empty').hidden = true; $('chat-input').value = '';
@@ -124,7 +125,7 @@
         try {
           const response = await fetch('/api/chat', {method: 'POST', signal: controller.signal,
             headers: inferenceHeaders(),
-            body: JSON.stringify({message: prompt, reply: turn.reply, history, max_characters: limit})});
+            body: JSON.stringify({message: prompt, reply: turn.reply, history, max_characters: limit, notes})});
           if (!(response.headers.get('content-type') || '').includes('application/json')) throw new Error(t('服务暂时不可用，请稍后重试。'));
           data = await response.json();
           if (!response.ok) throw new Error(errorText(data.error || '请求失败'));

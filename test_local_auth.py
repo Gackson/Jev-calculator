@@ -74,7 +74,7 @@ class LocalAuthTests(unittest.TestCase):
     def test_step_environment_priority_for_both_calculation_modes(self):
         for mode in ('choice','noul'):
             for supplied in (None,'browser-key'):
-                data=json.dumps({'expression':'1+1','mode':mode,'upper':'10'}).encode()
+                data=json.dumps({'expression':'1+1','mode':mode}).encode()
                 handler=Mock(headers={'Host':'127.0.0.1:8765','Origin':'http://127.0.0.1:8765',
                                      'Content-Type':'application/json','Content-Length':str(len(data))},
                              rfile=io.BytesIO(data),wfile=io.BytesIO())

@@ -120,6 +120,7 @@
     if (!await configReady) { errorMessage = '无法连接计算服务，请刷新页面或稍后重试。'; showStatus(); return; }
     if (running || otherBusy()) return;
     if (needsApiKey()) { openKeyDialog(); return; }
+    const notes = globalNotes();
     reset(); running = true; stopping = false; status = 'continue'; controls(); showStatus();
     const started = performance.now();
     let cursor = null;
@@ -131,7 +132,7 @@
         try {
           const response = await fetch('/api/draw', {method: 'POST', signal: controller.signal,
             headers: inferenceHeaders(),
-            body: JSON.stringify({prompt, size, mode: drawMode, cursor})});
+            body: JSON.stringify({prompt, size, mode: drawMode, cursor, notes})});
           if (!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('服务暂时不可用，请稍后重试。');
           data = await response.json();
           if (!response.ok) throw new Error(data.error || '请求失败');

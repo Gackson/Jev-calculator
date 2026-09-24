@@ -4,11 +4,11 @@ import re
 import threading
 from urllib.parse import urlsplit
 
-from calculator import (MAX_DIGITS, ApiFailure, audit_judgments, evaluate, fixed_two,
-                        parse_range, predict, predict_noul, request_api_key)
+from calculator import (MAX_DIGITS, MAX_NOUL_STEPS, ApiFailure, audit_judgments, evaluate, fixed_two,
+                        predict, predict_noul, request_api_key, notes_context, MAX_REQUEST_BODY)
 
 MODEL = "jev-1.13.0"
-MAX_BODY = 8192
+MAX_BODY = MAX_REQUEST_BODY
 
 
 def bounded_int(value, low, high):
@@ -17,10 +17,10 @@ def bounded_int(value, low, high):
     return value
 
 
-def validate_cursor(cursor, identity, upper):
+def validate_cursor(cursor, identity):
     if not isinstance(cursor, dict) or cursor.get("input") != identity:
         raise ValueError("算式或设置已改变，请重新开始计算。")
-    index = bounded_int(cursor.get("index"), 1, 129)
+    index = bounded_int(cursor.get("index"), 1, MAX_NOUL_STEPS + 1)
     first = cursor.get("first_error")
     if first is not None:
         bounded_int(first, 1, index)
@@ -39,23 +39,44 @@ def validate_cursor(cursor, identity, upper):
             raise ValueError("预测步数无效。")
         clean["digits"] = digits
     else:
-        count = bounded_int(state.get("count"), 1, 128)
-        bounds = []
-        for key in ("low", "high"):
+        count = bounded_int(state.get("count"), 1, MAX_NOUL_STEPS)
+
+        def number(key):
             value = state.get(key)
-            if not isinstance(value, str) or not re.fullmatch(r"-?[0-9]{1,25}", value):
-                raise ValueError("候选区间无效。")
-            bounds.append(int(value))
-        low, high = bounds
-        if not (0 <= low <= upper + 1 and -1 <= high <= upper and low <= high + 1) or index != count + 1:
-            raise ValueError("候选区间或预测步数无效。")
-        clean.update(low=str(low), high=str(high), count=count)
+            if not isinstance(value, str) or not re.fullmatch(r"0|[1-9][0-9]{0,154}", value):
+                raise ValueError("搜索进度无效。")
+            value = int(value)
+            if value > 2 ** MAX_NOUL_STEPS:
+                raise ValueError("搜索进度无效。")
+            return value
+
+        low, guess = number("low"), number("guess")
+        high = None if state.get("high") is None else number("high")
+        phase = state.get("phase")
+        if (phase not in ("equal", "larger") or index != count + 1 or low > guess
+                or (high is not None and not 3 <= low <= guess <= high)
+                or (phase == "larger" and guess < 3)):
+            raise ValueError("搜索区间或判断步骤无效。")
+        if high is None:
+            if guess < 3:
+                valid = low == guess == count and phase == "equal"
+            else:
+                # Three initial checks, then equality and size for each power of two.
+                valid = (guess >= 4 and guess & (guess - 1) == 0
+                         and low == guess // 2 + 1
+                         and count == 2 * guess.bit_length() - 3 + (phase == "larger"))
+            if not valid:
+                raise ValueError("上界探索进度无效。")
+        clean.update(low=str(low), high=str(high) if high is not None else None,
+                     guess=str(guess), phase=phase, count=count)
     return clean, index, first
 
 
 def calculate_step(body, token, model=MODEL, call=None, rng=None):
     if not isinstance(body, dict):
         raise ValueError("请求格式不正确。")
+    notes = body.get("notes", "")
+    extra_context = notes_context(notes)
     expression, actual = evaluate(body.get("expression"))
     mode = body.get("mode", "choice")
     context = body.get("include_context", True)
@@ -64,21 +85,20 @@ def calculate_step(body, token, model=MODEL, call=None, rng=None):
     strategy = body.get("strategy", "random")
     if strategy not in ("random", "binary"):
         raise ValueError("未知取数方式。")
-    upper = parse_range(body.get("upper"), actual) if mode == "noul" else None
     identity = {"expression": expression, "mode": mode, "include_context": context,
-                "upper": str(upper) if upper is not None else None, "strategy": strategy}
+                "strategy": strategy, **extra_context}
     cursor = body.get("cursor")
-    state, index, first = (None, 0, None) if cursor is None else validate_cursor(cursor, identity, upper)
+    state, index, first = (None, 0, None) if cursor is None else validate_cursor(cursor, identity)
     target = int(actual)
     events = []
     if cursor is None:
         events.append({"event": "start", **identity, "actual": fixed_two(actual),
                        "integer_target": str(target), "max_digits": MAX_DIGITS})
     cancelled = threading.Event()
-    stream = (predict_noul(expression, model, token, cancelled, upper, target, call=call, rng=rng,
-                           resume=state, single_step=True, strategy=strategy) if mode == "noul" else
+    stream = (predict_noul(expression, model, token, cancelled, call=call, rng=rng,
+                           resume=state, single_step=True, strategy=strategy, notes=notes) if mode == "noul" else
               predict(expression, model, token, cancelled, call=call, include_context=context,
-                      resume=state, single_step=True))
+                      resume=state, single_step=True, notes=notes))
     next_cursor = None
     for item in audit_judgments(stream, target, index, first):
         if item["event"] == "checkpoint":
@@ -124,7 +144,7 @@ def handle_step(handler, model=MODEL, local_token="", operation=None, backend_re
         return reply(handler, 401, {"error": str(exc)})
     try:
         size = int(handler.headers.get("Content-Length", "0"))
-        if not 0 < size <= (32768 if operation else MAX_BODY):
+        if not 0 < size <= MAX_BODY:
             raise ValueError("请求过大或为空。")
         body = json.loads(handler.rfile.read(size))
         result = (operation or calculate_step)(body, token, model, **({"call": call} if call is not None else {}))
@@ -137,7 +157,7 @@ def handle_step(handler, model=MODEL, local_token="", operation=None, backend_re
         return reply(handler, 502, {"error": message})
     except (ValueError, TypeError, KeyError, RecursionError):
         # Do not reflect arbitrary request or upstream content (including keys).
-        return reply(handler, 400, {"error": "消息或生成进度无效，请重新发送。" if operation else "算式、范围或预测进度无效，请检查输入后重新计算。"})
+        return reply(handler, 400, {"error": "消息或生成进度无效，请重新发送。" if operation else "算式或预测进度无效，请检查输入后重新计算。"})
     except Exception:
         return reply(handler, 500, {"error": "本轮预测未完成，请稍后重试。"})
     return reply(handler, 200, result)

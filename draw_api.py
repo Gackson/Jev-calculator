@@ -2,7 +2,7 @@
 import copy
 import time
 
-from calculator import validate_choice, validate_noul
+from calculator import validate_choice, validate_noul, notes_context
 from typesafe_client import model_matches, system_one
 
 DIRECTIONS = {'N': (0, -1), 'NE': (1, -1), 'E': (1, 0), 'SE': (1, 1),
@@ -79,16 +79,17 @@ def read_cursor(cursor, identity):
 def draw_step(body, token, model='jev-1.13.0', call=None):
     if not isinstance(body, dict):
         raise ValueError('Invalid request')
+    extra_context = notes_context(body.get('notes', ''))
     prompt, size, mode = body.get('prompt'), body.get('size'), body.get('mode')
     if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 1000:
         raise ValueError('Invalid description')
     integer(size, 4, 14)
     if mode not in ('enumeration', 'monte_carlo', 'ballpoint'):
         raise ValueError('Invalid drawing mode')
-    identity = dict(prompt=prompt, size=size, mode=mode)
+    identity = dict(prompt=prompt, size=size, mode=mode, **extra_context)
     state = read_cursor(body.get('cursor'), identity)
     total = size * size
-    view = dict(description=prompt, size=size,
+    view = dict(description=prompt, size=size, **extra_context,
                 rows=[state['pixels'][i:i + size] for i in range(0, total, size)],
                 marks=state['marks'], pen=None if state['pen'] is None else point_key(state['pen'], size))
     phase = 'pixel' if mode == 'enumeration' else 'move' if state['pen'] is not None else 'place'

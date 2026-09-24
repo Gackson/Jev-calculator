@@ -12,7 +12,11 @@ function inferenceHeaders() {
     ...(localProviders ? {'X-Inference-Provider': provider} : {}),
     ...(provider === 'typesafe' && !environmentKey && apiKey ? {Authorization: `Bearer ${apiKey}`} : {})};
 }
+// Shared across all pages; snapshot once per run and keep it only in memory.
+$('global-notes').value = '';
+function globalNotes() { return $('global-notes').value; }
 function updateProviderControls() {
+  $('global-notes').disabled = busy || document.body.dataset.chatBusy === 'true' || document.body.dataset.drawBusy === 'true';
   $('provider').disabled = !localProviders || busy || document.body.dataset.chatBusy === 'true' || document.body.dataset.drawBusy === 'true';
 }
 function updateProviderMenu() {
@@ -124,14 +128,14 @@ function optionLabel(value) { return value === 'negative' ? t('负数') : value 
 function title(step) {
   if (step.event === 'sign') return t('符号判断');
   if (step.event === 'digit') return t('{place}判断', {place: placeName(step.position)});
-  if (step.event === 'comparison') return `${step.strategy === 'binary' ? t('二分法') : t('随机数')} ${step.candidate}`;
-  return t('候选 {n}', {n: step.candidate});
+  if (step.event === 'comparison') return t('大小判断 {n}', {n: step.guess});
+  return t('相等判断 {n}', {n: step.guess});
 }
 function question(step) {
   if (step.event === 'sign') return t('向零截断后的整数是否为负数？');
   if (step.event === 'digit') return t('绝对值的{place}是哪一位数字，还是已经结束？', {place: placeName(step.position)});
-  if (step.event === 'comparison') return t('{n} 是否大于结果的绝对值？', {n: step.candidate});
-  return t('{n} 是否等于结果的绝对值？', {n: step.candidate});
+  if (step.event === 'comparison') return t('{n} 是否大于结果的绝对值？', {n: step.guess});
+  return t('{n} 是否等于结果的绝对值？', {n: step.guess});
 }
 function setBusy(value) {
   busy = value;
@@ -141,7 +145,6 @@ function setBusy(value) {
   $('submit').replaceChildren(document.createTextNode(value ? t('预测中') : t('开始计算')), node('span', '', value ? '…' : '='));
   $('stop').hidden = !value; $('stop').disabled = false;
   ['expression', 'include-context', 'mode-choice', 'mode-noul', 'connection', 'strategy-binary', 'strategy-random'].forEach((id) => { $(id).disabled = value; });
-  $('upper').disabled = value || mode !== 'noul';
   document.dispatchEvent(new Event('jev:busy'));
   document.querySelectorAll('[data-example]').forEach((button) => { button.disabled = value; });
 }
@@ -151,8 +154,6 @@ function updateMode() {
   $('mode-choice').setAttribute('aria-pressed', String(!isNoul));
   $('mode-noul').setAttribute('aria-pressed', String(isNoul));
   $('context-control').hidden = isNoul; $('range-control').hidden = !isNoul;
-  $('upper').required = isNoul;
-  $('upper').disabled = busy || !isNoul;
   $('digits').hidden = isNoul; $('noul-display').hidden = !isNoul;
   $('mode-tag').textContent = t('{mode} / 整数', {mode: mode.toUpperCase()});
   ['choice', 'random', 'binary'].forEach((value) => {
@@ -218,7 +219,7 @@ function resetScreen() {
   $('comparison-note').textContent = t('整数按向零截断比较');
   $('prediction-note').textContent = '';
   $('run-status').textContent = t('准备好了，慢慢猜。'); $('run-meta').textContent = mode.toUpperCase();
-  $('noul-stage').textContent = t('当前候选区间'); $('noul-value').textContent = '—';
+  $('noul-stage').textContent = t('当前搜索区间'); $('noul-value').textContent = '—';
   renderSteps();
 }
 function selectStep(key) {
@@ -265,6 +266,8 @@ function digitButton(step) {
   button.append(node('span', 'number', value), node('small', '', sign ? t('符号') : step.choice === 'END' ? t('终止') : placeName(step.position)));
   return bindStep(button, step);
 }
+function emptyRange(bounds) { return bounds[1] !== null && BigInt(bounds[0]) > BigInt(bounds[1]); }
+function rangeText(bounds) { return emptyRange(bounds) ? t('空区间') : `${bounds[0]}–${bounds[1] ?? '∞'}`; }
 function renderSteps() {
   const digitSteps = steps.filter((s) => s.event === 'digit');
   const cards = [], end = digitSteps.find((s) => s.choice === 'END'), sign = steps.find((s) => s.event === 'sign');
@@ -277,7 +280,7 @@ function renderSteps() {
     row.append(node('span', 'step-index', String(step.judgment_index).padStart(2, '0')));
     const description = node('span', 'step-description');
     description.append(node('strong', '', title(step)));
-    const range = step.after ? `${step.before.join('–')} → ${BigInt(step.after[0]) > BigInt(step.after[1]) ? t('空区间') : step.after.join('–')}` : step.event === 'candidate' ? t('逐项确认最终候选') : step.event === 'sign' ? t('独立判断正负') : t('从右向左 · 第 {n} 位', {n: step.position + 1});
+    const range = step.after ? `${rangeText(step.before)} → ${rangeText(step.after)}` : step.event === 'sign' ? t('独立判断正负') : t('从右向左 · 第 {n} 位', {n: step.position + 1});
     description.append(node('small', '', range));
     row.append(description, node('span', 'step-answer', optionLabel(step.choice)));
     const p = step.type === 'noul' ? step.decision_probability : step.probabilities[step.choice];
@@ -292,9 +295,9 @@ function handleEvent(event) {
   if (event.event === 'start') {
     $('actual').textContent = event.actual;
     $('comparison-note').textContent = t('对照整数：{n}', {n: event.integer_target});
-    $('run-status').textContent = mode === 'noul' ? t('正在判断候选数与结果符号…') : t('正在判断个位与结果符号…');
-    if (mode === 'noul') $('noul-value').textContent = `0–${event.upper}`;
-  } else if (['sign', 'digit', 'comparison', 'candidate'].includes(event.event)) {
+    $('run-status').textContent = mode === 'noul' ? t('正在判断是否为 0 与结果符号…') : t('正在判断个位与结果符号…');
+    if (mode === 'noul') $('noul-value').textContent = '0–∞';
+  } else if (['sign', 'digit', 'comparison', 'equality'].includes(event.event)) {
     steps.push(event); renderSteps();
     selectStep(event.judgment_index);
     if (!replaying) {
@@ -303,13 +306,13 @@ function handleEvent(event) {
     $('run-meta').textContent = t('{n} 次判断', {n: steps.length});
     if (event.event === 'digit') {
       $('run-status').textContent = event.choice === 'END' ? t('已收到终止符，停止向左预测') : t('已得到{place}，正在判断{next}…', {place: placeName(event.position), next: placeName(event.position + 1)});
-    } else if (event.event === 'comparison') {
-      const empty = BigInt(event.after[0]) > BigInt(event.after[1]);
-      $('noul-value').textContent = empty ? t('空区间') : event.after.join('–');
-      $('run-status').textContent = t('{n} → Jev 判断{choice}，{next}…', {n: event.candidate, choice: optionLabel(event.choice), next: empty ? t('无剩余候选') : t('继续缩小范围')});
-    } else if (event.event === 'candidate') {
-      $('noul-stage').textContent = t('逐项确认候选');
-      $('run-status').textContent = t('候选 {n} → {choice}', {n: event.candidate, choice: optionLabel(event.choice)});
+    } else if (event.event === 'comparison' || event.event === 'equality') {
+      const empty = emptyRange(event.after), expanding = event.after[1] === null;
+      $('noul-stage').textContent = expanding ? t('正在寻找上界') : t('当前搜索区间');
+      $('noul-value').textContent = rangeText(event.after);
+      $('run-status').textContent = event.event === 'equality'
+        ? `${question(event)} ${optionLabel(event.choice)}`
+        : t('{n} → Jev 判断{choice}，{next}…', {n: event.guess, choice: optionLabel(event.choice), next: empty ? t('空区间') : expanding ? t('继续寻找上界') : t('继续缩小范围')});
     }
     $('prediction-note').textContent = '';
     if (event.first_error) {
@@ -322,13 +325,13 @@ function handleEvent(event) {
     terminal = true;
     $('run-meta').textContent = `${t('{n} 次判断', {n: event.judgments})} · ${(event.elapsed_ms / 1000).toFixed(2)} s · ${event.tokens} tokens`;
     if (event.status !== 'complete') {
-      const message = event.status === 'empty' ? t('Jev 在个位提前终止，未产生整数结果') : event.status === 'ambiguous' ? t('多个候选被判为“是”：{values}', {values: event.accepted.join(', ')}) : t('没有候选被判为“是”，无法确定答案');
+      const message = event.status === 'empty' ? t('Jev 在个位提前终止，未产生整数结果') : t('判断产生空区间，无法确定答案');
       $('run-status').textContent = t('判断结束 · 无唯一有效结果');
       $('verdict').textContent = t('无有效结果'); $('verdict').className = 'verdict bad';
       $('prediction-note').textContent = message;
       if (mode === 'noul') { $('noul-stage').textContent = t('无法确定唯一答案'); $('noul-value').textContent = '—'; }
     } else {
-      $('run-status').textContent = mode === 'noul' ? t('判断完成 · 已检查所有最终候选') : t('预测完成 · 已由终止符结束');
+      $('run-status').textContent = mode === 'noul' ? t('判断完成 · 已确认答案') : t('预测完成 · 已由终止符结束');
       $('verdict').textContent = event.match ? t('整数一致') : t('结果不同');
       $('verdict').className = `verdict ${event.match ? 'good' : 'bad'}`;
       $('prediction-note').textContent = t('Jev 整数结果：{n} · {audit}', {n: event.result, audit: event.first_error_index === null ? t('所有判断均正确') : t('首次错误在第 {n} 步', {n: event.first_error_index})});
@@ -350,7 +353,7 @@ $('calculator-form').addEventListener('submit', async (e) => {
   if (needsApiKey()) { openKeyDialog(); return; }
   resetScreen(); runId = crypto.randomUUID(); stopRequested = false;
   $('run-status').textContent = t('正在连接模型…'); setBusy(true);
-  const input = { expression, mode, strategy, include_context: $('include-context').checked, upper: $('upper').value.trim() };
+  const input = { expression, mode, strategy, include_context: $('include-context').checked, notes: globalNotes() };
   const started = performance.now();
   try {
     let cursor = null;

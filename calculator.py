@@ -98,10 +98,22 @@ def validate_choice(answer, criteria):
             "top_three": [{"option": key, "probability": probs[key]} for key in ranked[:3]]}
 
 
-def predict(expression, model, token, cancelled, call=None, max_digits=MAX_DIGITS, include_context=True, resume=None, single_step=False):
+# Leave room for free-form notes and their copy in stateless cursors.
+MAX_REQUEST_BODY = 128 * 1024
+
+
+def notes_context(notes):
+    """Preserve user context verbatim; an empty field leaves existing prompts unchanged."""
+    if not isinstance(notes, str):
+        raise ValueError("Notes must be text.")
+    return {"notes": notes} if notes else {}
+
+
+def predict(expression, model, token, cancelled, call=None, max_digits=MAX_DIGITS, include_context=True, resume=None, single_step=False, notes=""):
     """Yield actual judgments sequentially; never pass the reference answer to Jev."""
     if call is None:
         call = lambda payload: system_one(token, payload)
+    extra_context = notes_context(notes)
     state = resume or {}
     digits, negative = list(state.get("digits", [])), state.get("negative", False)
     started = time.monotonic() - state.get("elapsed_ms", 0) / 1000
@@ -116,7 +128,7 @@ def predict(expression, model, token, cancelled, call=None, max_digits=MAX_DIGIT
                 "Compute `expression` using ordinary arithmetic precedence and real division. "
                 "Truncate the final result toward zero. Is this integer negative or nonnegative? "
                 "Zero, including a negative fraction truncated to zero, is nonnegative.", "criteria": SIGN}
-        state = {"expression": expression}
+        state = {"expression": expression, **extra_context}
         if include_context:
             state["predicted_digits_right_to_left"] = list(digits)
         payload = {"model": model, "state": state, "questions": questions}
@@ -168,43 +180,33 @@ def validate_noul(answer):
             "decision_probability": p if p >= .5 else 1 - p}
 
 
-def parse_range(value, actual):
-    if not isinstance(value, str) or not re.fullmatch(r"[0-9]{1,25}", value):
-        raise ValueError("绝对值上限须为正整数，且不超过 10^24。")
-    upper = int(value)
-    if not 1 <= upper <= 10 ** 24 or upper <= abs(actual):
-        raise ValueError("绝对值上限必须严格大于真实结果的绝对值，且不超过 10^24。")
-    return upper
+MAX_NOUL_STEPS = 512
 
 
-def random_candidate(low, high, target, rng):
-    # Uniform sampling excluding only the true answer, without a rejection loop.
-    excludes = low <= target <= high
-    value = rng.randrange(low, high + 1 - int(excludes))
-    return value + int(excludes and value >= target)
-
-
-def comparison_candidate(low, high, target, rng, strategy="random"):
-    if strategy == "random":
-        return random_candidate(low, high, target, rng)
-    # Called only for ranges with at least five entries. Moving one place right
-    # stays in range and avoids giving the answer away in a comparison question.
-    midpoint = (low + high) // 2
-    return midpoint + int(midpoint == target)
-
-
-def predict_noul(expression, model, token, cancelled, upper, target, call=None, rng=None, max_steps=128, resume=None, single_step=False, strategy="random"):
-    """Truth is used only to exclude pivots, never to repair model decisions."""
+def predict_noul(expression, model, token, cancelled, call=None, rng=None,
+                 max_steps=MAX_NOUL_STEPS, resume=None, single_step=False, strategy="random", notes=""):
+    """Discover an upper bound, then search it. Only model decisions guide the search."""
     if call is None:
         call = lambda payload: system_one(token, payload)
     if strategy not in ("random", "binary"):
         raise ValueError("未知取数方式。")
     rng = rng or random.SystemRandom()
+    extra_context = notes_context(notes)
     state = resume or {}
-    low, high = int(state.get("low", 0)), int(state.get("high", upper))
+    low = int(state.get("low", 0))
+    high = int(state["high"]) if state.get("high") is not None else None
+    guess, phase = int(state.get("guess", 0)), state.get("phase", "equal")
     count, total_tokens = state.get("count", 0), state.get("tokens", 0)
     negative = state.get("negative")
     started = time.monotonic() - state.get("elapsed_ms", 0) / 1000
+
+    def bounds():
+        return [str(low), str(high) if high is not None else None]
+
+    def done(result=None):
+        return {"event": "done", "result": result,
+                "status": "complete" if result is not None else "no_match",
+                "tokens": total_tokens, "elapsed_ms": round((time.monotonic() - started) * 1000)}
 
     def ask(questions, state):
         nonlocal negative, total_tokens
@@ -213,7 +215,7 @@ def predict_noul(expression, model, token, cancelled, upper, target, call=None, 
             questions["sign"] = {"type": "noul", "instructions": ARITHMETIC +
                 "Is the resulting integer strictly negative? Zero is not negative."}
         tick = time.monotonic()
-        payload = {"model": model, "state": {"expression": expression, **state}, "questions": questions}
+        payload = {"model": model, "state": {"expression": expression, **state, **extra_context}, "questions": questions}
         request_input = copy.deepcopy(payload)
         response = call(payload)
         if cancelled.is_set():
@@ -233,72 +235,70 @@ def predict_noul(expression, model, token, cancelled, upper, target, call=None, 
             sign = {"event": "sign", "choice": "negative" if negative else "positive", **metadata, **decision}
         return answers, metadata, sign
 
-    while high - low + 1 >= 5:
+    while True:
         if cancelled.is_set():
             yield {"event": "cancelled"}
             return
         if count >= max_steps:
-            yield {"event": "limit", "message": f"已达到 {max_steps} 次区间判断上限，停止本次测试。"}
+            yield {"event": "limit", "message": f"已达到 {max_steps} 次数字判断上限，停止本次测试。"}
             return
-        candidate = comparison_candidate(low, high, abs(target), rng, strategy)
-        questions = {"larger": {"type": "noul", "instructions": ARITHMETIC +
-            "Consider the absolute value of that integer. Is `candidate` STRICTLY GREATER than that absolute value?",
-            "criteria": {"true": "The candidate is too large.", "false": "The candidate is not greater."}}}
-        answers, metadata, sign = ask(questions, {"candidate": str(candidate)})
+        checking_equal = phase == "equal"
+        instruction = ("Is `guess` exactly equal to the absolute value of the resulting integer?"
+                       if checking_equal else
+                       "Is `guess` STRICTLY GREATER than the absolute value of the resulting integer?")
+        answers, metadata, sign = ask({phase: {"type": "noul", "instructions": ARITHMETIC + instruction}},
+                                      {"guess": str(guess)})
         if cancelled.is_set():
             yield {"event": "cancelled"}
             return
         if sign:
             yield sign
-        decision = validate_noul(answers["larger"])
-        before = [str(low), str(high)]
-        if decision["yes"]:
-            high = candidate - 1
-        else:
-            low = candidate + 1
+        decision = validate_noul(answers[phase])
+        before, current = bounds(), guess
         count += 1
-        yield {"event": "comparison", "strategy": strategy, "candidate": str(candidate), "before": before,
-               "after": [str(low), str(high)], "choice": "大了" if decision["yes"] else "小了",
-               **metadata, **decision}
-        if single_step:
-            yield {"event": "checkpoint", "state": {"low": str(low), "high": str(high),
-                   "count": count, "negative": negative, "tokens": total_tokens,
-                   "elapsed_ms": round((time.monotonic() - started) * 1000)}}
-            return
-
-    accepted = []
-    if low <= high:
-        if cancelled.is_set():
-            yield {"event": "cancelled"}
-            return
-        candidates = list(range(low, high + 1))
-        questions = {f"equal_{i}": {"type": "noul", "instructions": ARITHMETIC +
-            f"Is the absolute value of the resulting integer exactly equal to {candidate}?"}
-            for i, candidate in enumerate(candidates)}
-        # Independent yes/no questions share one request, each keeps its own probability.
-        answers, metadata, sign = ask(questions, {})
-        if cancelled.is_set():
-            yield {"event": "cancelled"}
-            return
-        if sign:
-            yield sign
-        for i, candidate in enumerate(candidates):
-            decision = validate_noul(answers[f"equal_{i}"])
+        if checking_equal:
+            if not decision["yes"]:
+                if guess < 3:
+                    low = guess + 1
+                    guess = low if low < 3 else 4
+                else:
+                    phase = "larger"
+            yield {"event": "equality", "strategy": strategy, "guess": str(current),
+                   "before": before, "after": bounds(), "choice": "是" if decision["yes"] else "否",
+                   **metadata, **decision}
             if decision["yes"]:
-                accepted.append(candidate)
-            yield {"event": "candidate", "candidate": str(candidate), "before": [str(low), str(high)],
-                   "choice": "是" if decision["yes"] else "否", **metadata, **decision}
-    result = str(-accepted[0] if negative else accepted[0]) if len(accepted) == 1 else None
-    yield {"event": "done", "result": result, "status": "complete" if result is not None else "ambiguous" if accepted else "no_match",
-           "accepted": [str(n) for n in accepted], "tokens": total_tokens,
-           "elapsed_ms": round((time.monotonic() - started) * 1000)}
+                yield done(str(-current if negative else current))
+                return
+        else:
+            if decision["yes"]:
+                high = guess - 1
+            else:
+                low = guess + 1
+            yield {"event": "comparison", "strategy": strategy, "guess": str(current),
+                   "before": before, "after": bounds(), "choice": "大了" if decision["yes"] else "小了",
+                   **metadata, **decision}
+            if high is not None and low > high:
+                yield done()
+                return
+            if high is None:
+                guess *= 2
+            elif strategy == "binary":
+                guess = (low + high) // 2
+            else:
+                guess = rng.randrange(low, high + 1)
+            phase = "equal"
+        if single_step:
+            yield {"event": "checkpoint", "state": {"low": str(low), "high": bounds()[1],
+                   "guess": str(guess), "phase": phase, "count": count, "negative": negative,
+                   "tokens": total_tokens, "elapsed_ms": round((time.monotonic() - started) * 1000)}}
+            return
 
 
 def audit_judgments(events, target, index=0, first_error=None):
     """Annotate outputs for display only; these labels never feed model context."""
     for event in events:
         kind = event["event"]
-        if kind in ("sign", "digit", "comparison", "candidate"):
+        if kind in ("sign", "digit", "comparison", "equality"):
             index += 1
             if kind == "sign":
                 expected = "negative" if target < 0 else "positive"
@@ -306,9 +306,9 @@ def audit_judgments(events, target, index=0, first_error=None):
                 digits = str(abs(target))
                 expected = digits[-1 - event["position"]] if event["position"] < len(digits) else "END"
             elif kind == "comparison":
-                expected = "大了" if int(event["candidate"]) > abs(target) else "小了"
+                expected = "大了" if int(event["guess"]) > abs(target) else "小了"
             else:
-                expected = "是" if int(event["candidate"]) == abs(target) else "否"
+                expected = "是" if int(event["guess"]) == abs(target) else "否"
             correct = event["choice"] == expected
             is_first = not correct and first_error is None
             if is_first:
@@ -453,7 +453,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.json_response(415, {"error": "需要 JSON 请求。"})
         try:
             size = int(self.headers.get("Content-Length", "0"))
-            if not 0 < size <= 4096:
+            if not 0 < size <= MAX_REQUEST_BODY:
                 raise ValueError("请求过大或为空。")
             body = json.loads(self.rfile.read(size))
             if not isinstance(body, dict):
@@ -469,6 +469,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json_response(200, {"cancelled": event is not None})
             if self.path != "/api/calculate":
                 return self.json_response(404, {"error": "接口不存在。"})
+            notes = body.get("notes", "")
+            notes_context(notes)
             expression, actual = evaluate(body.get("expression"))
             mode = body.get("mode", "choice")
             if mode not in ("choice", "noul"):
@@ -479,7 +481,6 @@ class Handler(BaseHTTPRequestHandler):
             include_context = body.get("include_context", True)
             if type(include_context) is not bool:
                 raise ValueError("context 开关必须为布尔值。")
-            upper = parse_range(body.get("upper"), actual) if mode == "noul" else None
         except (ValueError, TypeError, RecursionError) as exc:
             return self.json_response(400, {"error": str(exc)})
         try:
@@ -500,11 +501,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.flush()
             emit({"event": "start", "expression": expression, "actual": fixed_two(actual),
                   "integer_target": str(int(actual)), "max_digits": MAX_DIGITS, "mode": mode,
-                  "include_context": include_context, "strategy": strategy, "upper": str(upper) if upper is not None else None})
+                  "include_context": include_context, "strategy": strategy})
             try:
-                events = (predict_noul(expression, model, token, event, upper, int(actual), strategy=strategy, call=call)
+                events = (predict_noul(expression, model, token, event, strategy=strategy, call=call, notes=notes)
                           if mode == "noul" else predict(expression, model, token, event, call=call,
-                                                        include_context=include_context))
+                                                        include_context=include_context, notes=notes))
                 for item in audit_judgments(events, int(actual)):
                     if item["event"] == "done":
                         item["match"] = item["result"] == str(int(actual))
