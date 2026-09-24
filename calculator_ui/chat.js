@@ -33,7 +33,7 @@
     document.querySelector('footer').hidden = page !== 'calculator';
     document.querySelector('.brand-sub').textContent = `/ ${pageTitle(page).toUpperCase()}`;
     history.replaceState(null, '', `#${page === 'draw' ? 'canvas' : page}`);
-    document.title = t(`${pageTitle(page)} · Jev`);
+    document.title = `${pageTitle(page)} · jev-olympics`;
   }
   tabs.forEach((tab, index) => {
     tab.addEventListener('click', () => switchPage(tab.dataset.page));

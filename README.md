@@ -1,8 +1,10 @@
-# Dumb Calculator
+# jev-olympics
+
+Let Jev do math, chat, and draw—one probability at a time.
 
 **这个项目来自一个简单的迷思：Jev 能预测数学题的答案吗？**
 
-Dumb Calculator 是由 TypeSafe Jev 模型驱动的一个笨拙的计算器：先猜正负，再一位一位猜数字，或者在区间里反复问“大了还是小了”，最终交出一个整数答案。
+jev-olympics 是由 TypeSafe Jev 模型驱动的一组概率实验，包含计算、对话和绘图。计算器先猜正负，再一位一位猜数字，或者在区间里反复问“大了还是小了”，最终交出一个整数答案。
 
 计算器支持两种模式：
 

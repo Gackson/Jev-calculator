@@ -563,7 +563,7 @@ def main():
         print("环境 Key 无效，已忽略；Laya 本地推理不需要 Key。", flush=True)
     server = CalculatorServer(("127.0.0.1", args.port), args.model, local_key=key, provider=args.provider,
                               laya_path=args.laya_path, laya_device=args.laya_device)
-    print(f"Jev calculator: http://127.0.0.1:{args.port}", flush=True)
+    print(f"jev-olympics: http://127.0.0.1:{args.port}", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

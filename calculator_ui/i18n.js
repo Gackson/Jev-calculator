@@ -91,12 +91,12 @@ const messages = {
     "es": "Introduce una API Key válida, sin espacios ni saltos de línea.",
     "ko": "공백이나 줄바꿈 없이 유효한 API Key를 입력하세요."
   },
-  "Dumb Calculator 首页": {
-    "zh-TW": "Dumb Calculator 首頁",
-    "en": "Dumb Calculator home",
-    "ja": "Dumb Calculator ホーム",
-    "es": "Inicio de Dumb Calculator",
-    "ko": "Dumb Calculator 홈"
+  "jev-olympics 首页": {
+    "zh-TW": "jev-olympics 首頁",
+    "en": "jev-olympics home",
+    "ja": "jev-olympics ホーム",
+    "es": "Inicio de jev-olympics",
+    "ko": "jev-olympics 홈"
   },
   "看看 Jev 能否用滑稽的方式预测出算式答案": {
     "zh-TW": "看看 Jev 能否用滑稽的方式預測出算式答案",
@@ -1676,7 +1676,7 @@ function pageTitle(page) {
 function translatePage() {
   document.documentElement.lang = locale;
   const page = document.querySelector('[data-page][aria-selected="true"]')?.dataset.page || 'calculator';
-  document.title = t(`${pageTitle(page)} · Jev`);
+  document.title = `${pageTitle(page)} · jev-olympics`;
   staticCopy.forEach(({element, source}) => { if (element.isConnected) element.textContent = t(source); });
   staticAttributes.forEach(({element, name, source}) => element.setAttribute(name, t(source)));
 }
