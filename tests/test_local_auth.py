@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from calculator import Handler, local_api_key
 from step_api import handle_step
-import test_calculator
+from tests import test_calculator
 
 
 class LocalAuthTests(unittest.TestCase):
@@ -86,21 +86,21 @@ class LocalAuthTests(unittest.TestCase):
                 self.assertEqual(calculate.call_args.args[1],'local-env-key')
                 self.assertNotIn(b'local-env-key',handler.wfile.getvalue())
 
-    def test_vercel_entrypoints_ignore_environment_and_dotenv(self):
+    def test_preview_entrypoints_ignore_environment_and_dotenv(self):
         from api.step import handler as VercelStep
         from api.config import handler as VercelConfig
         h=VercelStep.__new__(VercelStep)
         h.headers={'Host':'example.vercel.app','Content-Type':'application/json'}
         h.wfile=io.BytesIO()
         h.send_response=Mock(); h.send_header=Mock(); h.end_headers=Mock()
-        with patch.dict('os.environ',{'TYPESAFE_API_KEY':'server-secret'}), patch.object(Path,'read_text',side_effect=AssertionError('no dotenv read')), patch('step_api.calculate_step') as calculate:
+        with patch.dict('os.environ',{'TYPESAFE_API_KEY':'server-secret','VERCEL_ENV':'preview'}), patch.object(Path,'read_text',side_effect=AssertionError('no dotenv read')), patch('step_api.calculate_step') as calculate:
             h.do_POST()
         self.assertEqual(h.send_response.call_args.args[0],401)
         calculate.assert_not_called()
         h=VercelConfig.__new__(VercelConfig)
         h.wfile=io.BytesIO()
         h.send_response=Mock(); h.send_header=Mock(); h.end_headers=Mock()
-        with patch.dict('os.environ',{'TYPESAFE_API_KEY':'server-secret'}): h.do_GET()
+        with patch.dict('os.environ',{'TYPESAFE_API_KEY':'server-secret','VERCEL_ENV':'preview'}): h.do_GET()
         self.assertEqual(json.loads(h.wfile.getvalue())['auth_mode'],'byok')
         self.assertNotIn(b'server-secret',h.wfile.getvalue())
 

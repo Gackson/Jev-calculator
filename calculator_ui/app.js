@@ -4,9 +4,9 @@ const placeName = (p) => t(places[p]) || t('10^{p} 位', {p});
 const percent = (p) => new Intl.NumberFormat(locale, {style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1}).format(p);
 let strategy = 'random', eventHistory = [], replaying = false;
 let mode = 'choice', steps = [], selected = null, runId = null, busy = false, terminal = false;
-let apiKey = '', stopRequested = false, environmentKey = false;
+let apiKey = '', stopRequested = false, environmentKey = false, sharedKey = false;
 let provider = 'typesafe', localProviders = false;
-function needsApiKey() { return provider === 'typesafe' && !environmentKey && !apiKey; }
+function needsApiKey() { return provider === 'typesafe' && !environmentKey && !sharedKey && !apiKey; }
 function inferenceHeaders() {
   return {'Content-Type': 'application/json',
     ...(localProviders ? {'X-Inference-Provider': provider} : {}),
@@ -70,8 +70,8 @@ $('include-context').checked = true;
 function updateKeyStatus() {
   updateProviderMenu();
   $('connection').hidden = provider === 'laya';
-  $('connection').textContent = environmentKey ? t('使用环境 Key') : apiKey ? t('API Key 已填写') : t('设置 API Key');
-  $('connection').classList.toggle('ready', Boolean(environmentKey || apiKey));
+  $('connection').textContent = environmentKey ? t('使用环境 Key') : apiKey ? t('API Key 已填写') : sharedKey ? t('使用共享 Key') : t('设置 API Key');
+  $('connection').classList.toggle('ready', Boolean(environmentKey || sharedKey || apiKey));
 }
 function normalizeApiKey(value) {
   let key = value.trim();
@@ -87,7 +87,7 @@ function normalizeApiKey(value) {
 function openKeyDialog() {
   $('key-note').textContent = environmentKey
     ? t('当前优先使用本地环境 Key。移除环境配置并重启服务后，可使用页面填写的 Key。')
-    : t('仅当前页面使用，刷新后清除。');
+    : sharedKey ? t('默认使用站点共享 Key。填写后使用自己的 Key，清除后恢复共享 Key。仅当前页面保存。') : t('仅当前页面使用，刷新后清除。');
   $('api-key').value = '';
   $('api-key').placeholder = apiKey ? t('已填写，输入新 Key 可替换') : t('粘贴你的 API Key');
   $('key-error').hidden = true;
@@ -408,6 +408,7 @@ const configReady = fetch('/api/config').then((r) => {
   return r.json();
 }).then((config) => {
   environmentKey = config.auth_mode === 'environment';
+  sharedKey = config.auth_mode === 'shared';
   localProviders = Array.isArray(config.providers) && config.providers.includes('laya');
   provider = localProviders && config.provider === 'laya' ? 'laya' : 'typesafe';
   uiModelName = provider === 'laya' ? 'Laya' : 'Jev';

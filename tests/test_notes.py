@@ -10,10 +10,10 @@ from calculator import MAX_REQUEST_BODY, model_request, predict, predict_noul
 from chat_api import chat_step
 from draw_api import draw_step
 from step_api import calculate_step, handle_step
-import test_calculator
-import test_step_api
-from test_chat_api import response
-from test_draw_api import answer
+from tests import test_calculator
+from tests import test_step_api
+from tests.test_chat_api import response
+from tests.test_draw_api import answer
 
 NOTES = '  加油！🧠\nTry this prompt: "check carefully" <script>test</script>\n  '
 

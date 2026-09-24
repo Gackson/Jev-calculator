@@ -1,11 +1,12 @@
-"""Stateless one-round API shared by localhost and Vercel. No stored credentials."""
+"""Stateless one-round API shared by localhost and Vercel."""
 import json
 import re
 import threading
 from urllib.parse import urlsplit
+from cloud_auth import shared_api_key
 
 from calculator import (MAX_DIGITS, MAX_NOUL_STEPS, ApiFailure, audit_judgments, evaluate, fixed_two,
-                        predict, predict_noul, request_api_key, notes_context, MAX_REQUEST_BODY)
+                        predict, predict_noul, request_api_key, normalize_api_key, notes_context, MAX_REQUEST_BODY)
 
 MODEL = "jev-1.13.0"
 MAX_BODY = MAX_REQUEST_BODY
@@ -122,7 +123,7 @@ def reply(handler, status, data):
     handler.wfile.write(encoded)
 
 
-def handle_step(handler, model=MODEL, local_token="", operation=None, backend_resolver=None):
+def handle_step(handler, model=MODEL, local_token="", operation=None, backend_resolver=None, shared_key=False):
     # Both production and previews use a same-origin UI; never an open CORS proxy.
     origin = handler.headers.get("Origin")
     host = handler.headers.get("Host", "")
@@ -138,9 +139,24 @@ def handle_step(handler, model=MODEL, local_token="", operation=None, backend_re
             raise ValueError("本地模型仅限本地服务使用。")
     except ValueError:
         return reply(handler, 400, {"error": "未知或不可用的推理后端。"})
+    using_shared = False
     try:
-        token = "" if call is not None else local_token or request_api_key(handler.headers.get("Authorization"))
+        authorization = handler.headers.get("Authorization")
+        if call is not None:
+            token = ""
+        elif local_token:
+            token = local_token
+        elif authorization is not None:
+            # An explicit personal key never silently falls back to the owner's quota.
+            token = request_api_key(authorization)
+        elif shared_key and shared_api_key():
+            using_shared = True
+            token = normalize_api_key(shared_api_key())
+        else:
+            token = request_api_key(None)
     except ValueError as exc:
+        if using_shared:
+            return reply(handler, 503, {"error": "共享 Key 暂不可用，请使用自己的 API Key。"})
         return reply(handler, 401, {"error": str(exc)})
     try:
         size = int(handler.headers.get("Content-Length", "0"))
@@ -151,6 +167,8 @@ def handle_step(handler, model=MODEL, local_token="", operation=None, backend_re
     except ApiFailure as exc:
         if call is not None:
             return reply(handler, 503, {"error": str(exc)})
+        if using_shared:
+            return reply(handler, 502, {"error": "共享服务暂不可用，请稍后重试或使用自己的 API Key。"})
         message = {"HTTP 401": ("TypeSafe 拒绝了本地环境 Key（401）。请检查 TYPESAFE_API_KEY 或 .env，修改后重启本地服务。" if local_token else "TypeSafe 拒绝了此 API Key（401）。请检查是否复制完整，或重新填写。"),
                    "HTTP 403": "TypeSafe 拒绝访问（403）。请检查此 Key 的权限或账户状态。"}.get(
                        str(exc), "无法完成 TypeSafe 请求，请稍后重试。")

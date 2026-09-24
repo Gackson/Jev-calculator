@@ -151,7 +151,7 @@ class DrawTests(unittest.TestCase):
             dispatch.assert_called_once_with(request, 'jev-1.13.0', local_token='local-test-key', operation=draw_step, backend_resolver=request.server.resolve_backend)
         with patch('api.draw.handle_step') as dispatch:
             VercelHandler.do_POST(request)
-            dispatch.assert_called_once_with(request, operation=draw_step)
+            dispatch.assert_called_once_with(request, operation=draw_step, shared_key=True)
 
 
 if __name__ == '__main__':

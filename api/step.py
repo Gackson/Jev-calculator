@@ -7,4 +7,4 @@ class handler(BaseHTTPRequestHandler):
         pass
 
     def do_POST(self):
-        handle_step(self)
+        handle_step(self, shared_key=True)

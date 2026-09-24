@@ -1640,6 +1640,36 @@ Object.assign(messages, {
     "ko": "{n}개 단어 · {steps}회 판단"
   }
 });
+Object.assign(messages, {
+  "使用共享 Key": {
+    "zh-TW": "使用共享 Key",
+    "en": "Using shared key",
+    "ja": "共有キーを使用中",
+    "es": "Usando clave compartida",
+    "ko": "공유 키 사용 중"
+  },
+  "默认使用站点共享 Key。填写后使用自己的 Key，清除后恢复共享 Key。仅当前页面保存。": {
+    "zh-TW": "預設使用網站共享 Key。填寫後使用自己的 Key，清除後恢復共享 Key。僅目前頁面保存。",
+    "en": "The site key is used by default. Enter your own key to switch; clear it to use the shared key again. Your key stays in this page only.",
+    "ja": "既定ではサイトの共有キーを使用します。自分のキーを入力すると切り替わり、削除すると共有キーに戻ります。入力したキーはこのページ内だけに保持されます。",
+    "es": "Se usa la clave del sitio por defecto. Introduce la tuya para cambiar; bórrala para volver a la compartida. Tu clave solo se guarda en esta página.",
+    "ko": "기본적으로 사이트의 공유 키를 사용합니다. 개인 키를 입력하면 전환되고, 지우면 공유 키로 돌아갑니다. 개인 키는 현재 페이지에만 보관됩니다."
+  },
+  "共享 Key 暂不可用，请使用自己的 API Key。": {
+    "zh-TW": "共享 Key 暫不可用，請使用自己的 API Key。",
+    "en": "The shared key is unavailable. Please use your own API key.",
+    "ja": "共有キーを利用できません。自分の API キーを使用してください。",
+    "es": "La clave compartida no está disponible. Usa tu propia clave API.",
+    "ko": "공유 키를 사용할 수 없습니다. 개인 API 키를 사용하세요."
+  },
+  "共享服务暂不可用，请稍后重试或使用自己的 API Key。": {
+    "zh-TW": "共享服務暫不可用，請稍後重試或使用自己的 API Key。",
+    "en": "The shared service is temporarily unavailable. Try later or use your own API key.",
+    "ja": "共有サービスを一時的に利用できません。後でもう一度試すか、自分の API キーを使用してください。",
+    "es": "El servicio compartido no está disponible temporalmente. Inténtalo más tarde o usa tu propia clave API.",
+    "ko": "공유 서비스를 일시적으로 사용할 수 없습니다. 나중에 다시 시도하거나 개인 API 키를 사용하세요."
+  }
+});
 const supportedLanguages = ['zh-CN', 'zh-TW', 'en', 'ja', 'es', 'ko'];
 function initialLanguage() {
   try { const saved = localStorage.getItem('jev-language'); if (supportedLanguages.includes(saved)) return saved; } catch (_) {}

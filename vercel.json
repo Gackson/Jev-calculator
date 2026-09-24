@@ -5,7 +5,7 @@
   "functions": {
     "api/*.py": {
       "maxDuration": 120,
-      "excludeFiles": "{laya_client.py,requirements-laya.txt,.venv-laya/**,.cache-laya/**,test_*.py}"
+      "excludeFiles": "{laya_client.py,requirements-laya.txt,.venv-laya/**,.cache-laya/**,test_*.py,tests/**,docs/**}"
     }
   },
   "headers": [

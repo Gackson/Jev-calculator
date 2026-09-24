@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from calculator import DIGITS, SIGN, MAX_NOUL_STEPS, audit_judgments, predict, predict_noul
 from step_api import MAX_BODY, calculate_step, handle_step
-from test_calculator import answer
+from tests.test_calculator import answer
 
 
 class StepTests(unittest.TestCase):

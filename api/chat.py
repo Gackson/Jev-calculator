@@ -8,4 +8,4 @@ class handler(BaseHTTPRequestHandler):
         pass
 
     def do_POST(self):
-        handle_step(self, operation=chat_step)
+        handle_step(self, operation=chat_step, shared_key=True)

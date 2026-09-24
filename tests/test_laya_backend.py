@@ -59,7 +59,7 @@ class LocalBackendTests(unittest.TestCase):
                  ('/api/chat', {'message': 'Say hello'}),
                  *[('/api/draw', {'prompt': 'cat', 'size': 14, 'mode': mode})
                    for mode in ('enumeration', 'monte_carlo', 'ballpoint')]]
-        with patch('typesafe_client.request.build_opener', side_effect=AssertionError('network')):
+        with patch.dict('os.environ', {'VERCEL_ENV': 'preview'}), patch('typesafe_client.request.build_opener', side_effect=AssertionError('network')):
             for path, data in cases:
                 with self.subTest(path=path, data=data):
                     status, body = self.request(path, data, extra={'Authorization': 'malformed ignored'})
@@ -111,7 +111,7 @@ class LocalBackendTests(unittest.TestCase):
                         h.headers.update({'Authorization': 'Bearer test', 'X-Inference-Provider': 'laya'})
                     h.wfile = io.BytesIO()
                     h.send_response = Mock(); h.send_header = Mock(); h.end_headers = Mock()
-                    with patch('typesafe_client.request.build_opener', side_effect=AssertionError('network')):
+                    with patch.dict('os.environ', {'VERCEL_ENV': 'preview'}), patch('typesafe_client.request.build_opener', side_effect=AssertionError('network')):
                         h.do_POST()
                     self.assertEqual(h.send_response.call_args.args[0], expected)
 
