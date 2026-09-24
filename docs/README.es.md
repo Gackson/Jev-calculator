@@ -4,57 +4,65 @@
 
 Let Jev do math, chat, and draw things—in a probabilistic way.
 
-Deja que Jev calcule, converse y dibuje de forma probabilística. [Probar en línea](https://jev-olympics.vercel.app/)
+[Entrar en la arena](https://jev-olympics.vercel.app/)
 
-## Funciones
+Tres pruebas. Ninguna medalla. Un informe de incidente detallado por cada error.
 
-- **Calculator:** selecciona dígitos desde las unidades con Choice o busca un entero mediante las decisiones «igual / mayor / menor» de Noul. Compara la predicción con el resultado aritmético exacto.
-- **Chat:** construye respuestas en inglés carácter a carácter o palabra a palabra. El modo de palabras ofrece 249 palabras comunes, `. , ? !`, salto de línea y fin: 255 opciones. Los espacios se insertan automáticamente.
-- **Canvas:** dibuja en una cuadrícula en blanco y negro, de 4×4 a 14×14, recorriendo píxeles, eligiendo coordenadas o moviendo un bolígrafo.
-- **Notes:** añade instrucciones compartidas o palabras de ánimo a cada decisión. Tienen prioridad sobre las instrucciones integradas, dentro de las opciones disponibles.
+Un pequeño patio de recreo con el modelo Jev de TypeSafe. En vez de pedirle una respuesta terminada, hacemos que calcule, converse y dibuje tomando una decisión cada vez. Está hecho para divertirse. Cualquier utilidad práctica es un efecto secundario no previsto.
 
-Haz clic en un dígito, carácter, palabra o decisión de dibujo para ver las probabilidades, confidence (si está disponible), modelo, tiempo y tokens. «Ver entrada completa» está plegado por defecto y muestra el JSON real sin credenciales. Las predicciones no se corrigen. La interfaz admite seis idiomas; cambiar el idioma no traduce las instrucciones ni las respuestas del modelo. Al recargar se borran la conversación, el dibujo, Notes y las claves personales.
+## Las pruebas
 
-## Clave compartida y BYOK
+- **Calculator:** elige dígitos desde las unidades con Choice o busca un entero con los juicios de igualdad y tamaño de Noul. Al lado hacemos el cálculo real, para que la decepción también sea medible.
+- **Chat:** construye una respuesta en inglés carácter a carácter o palabra a palabra. El modo de palabras tiene 249 palabras comunes, `. , ? !`, `NEWLINE` y `END`: 255 opciones. Los espacios se insertan automáticamente.
+- **Canvas:** dibuja en una cuadrícula en blanco y negro de 4×4 a 14×14, recorriendo píxeles, eligiendo coordenadas o moviendo un bolígrafo. Que el resultado se parezca a la descripción forma parte del experimento.
+- **Notes:** añade instrucciones, contexto o ánimo a cada decisión. Tienen prioridad sobre las instrucciones integradas, dentro de las opciones disponibles.
 
-El sitio público usa una clave del servidor por defecto: puedes probarlo sin introducir una. El botón superior permite usar tu propia clave TypeSafe, que tendrá prioridad. Al borrarla vuelves a la compartida. Si se rechaza tu clave, nunca se usa automáticamente la cuota del propietario.
+## Inspeccionar los restos
 
-Obtén una clave en la [consola de TypeSafe](https://console.typesafe.ai/keys). Tu clave permanece solo en la memoria de la página y se envía por HTTPS al backend. La clave compartida nunca se envía al navegador.
+Haz clic en un dígito, carácter, palabra o decisión de dibujo para ver las probabilidades, confidence cuando esté disponible, modelo, tiempo y tokens. Despliega **Ver entrada completa** para consultar el JSON exacto enviado en ese paso, sin credenciales.
+
+Las predicciones se quedan tal como las hizo Jev. No corregimos el examen después de consultar las soluciones. Calculator señala el primer juicio equivocado; Chat y Canvas conservan el trabajo incompleto.
+
+La interfaz y este README admiten los mismos seis idiomas. Cambiar de idioma no traduce las instrucciones ni las respuestas del modelo. La conversación, el dibujo y Notes viven en la memoria de la página y desaparecen al recargar.
+
+## Reglas del juego
+
+- **Calculator:** admite enteros, operadores aritméticos y paréntesis. La referencia usa aritmética racional exacta; la comparación usa el entero truncado hacia cero. Choice permite 24 dígitos y una comprobación final de terminación. Noul amplía el intervalo y después usa valores aleatorios o puntos medios. Choice puede incluir o excluir las predicciones anteriores del contexto.
+- **Chat:** cada paso recibe el mensaje, la respuesta parcial, hasta tres turnos anteriores y Notes. El modo de palabras también recibe las selecciones previas. Dos espacios consecutivos o cinco caracteres idénticos detienen el modo de caracteres; cinco selecciones idénticas detienen el de palabras. Los límites son 64 / 128 / 256 caracteres o 32 / 64 / 128 decisiones en modo de palabras, contando puntuación y marcadores de control. Las paradas por repetición o límite se marcan como incompletas, nunca se disfrazan de `END`.
+- **Canvas:** la enumeración recorre los píxeles en orden; Monte Carlo elige coordenadas o `END`; el bolígrafo elige un inicio, una dirección, levantar la punta o `END`. Los bordes, las comprobaciones de repetición y los límites de pasos mantienen finito el experimento.
+- **Notes:** se fijan al iniciar la ejecución y se envían sin cambios en cada decisión. No se pueden editar a mitad del proceso. Notes no garantiza mejores predicciones.
 
 ## Ejecución local
 
-Necesitas Python 3.9 o posterior. El modo TypeSafe no requiere dependencias adicionales. Desde la raíz del proyecto:
+Python 3.9 o posterior; la inferencia TypeSafe no necesita dependencias Python adicionales. Configura `TYPESAFE_API_KEY` en el entorno o en un archivo `.env` en la raíz del proyecto:
+
+```dotenv
+TYPESAFE_API_KEY=your-typesafe-api-key
+```
 
 ```bash
 python3 calculator.py
 ```
 
-Abre <http://127.0.0.1:8765>. Usa `--port 8766` para cambiar el puerto. El modelo predeterminado es `jev-1.13.0`.
+Abre <http://127.0.0.1:8765>. Usa `--port 8766` para cambiar el puerto o `--model jev-latest` para cambiar el modelo. El predeterminado es `jev-1.13.0`. El servidor solo escucha en localhost. Reinicia tras modificar la configuración y no incluyas credenciales reales en Git.
 
-Puedes configurar `TYPESAFE_API_KEY` en `.env`. La prioridad local es: entorno del proceso → `.env` → clave del navegador. Reinicia tras cambiar la clave de entorno. A diferencia del sitio público, la clave local de entorno tiene prioridad sobre la personal. Nunca incluyas claves reales en Git.
+También se admite inferencia local opcional con **Laya**. La instalación, el despliegue y la configuración se explican en la [guía de desarrollo en inglés](development.md).
 
-## Despliegue en Vercel
-
-Añade `TYPESAFE_API_KEY` como **Secret** para **Production** y vuelve a desplegar:
-
-```bash
-vercel env add TYPESAFE_API_KEY production --sensitive
-vercel deploy --prod
-```
-
-Introduce la clave cuando lo pida la CLI; no la pongas en argumentos ni en el código. Solo se activa con `VERCEL_ENV=production`. Los despliegues de vista previa siguen exigiendo BYOK. La nube no carga `.env` ni los pesos locales de Laya. Elimina la variable y vuelve a desplegar para desactivar el acceso compartido.
-
-El uso público consume la cuota TypeSafe del propietario, que la administra desde la consola. La aplicación no tiene un límite de gasto ni de solicitudes distribuido entre instancias. La comprobación del origen no impide llamadas directas mediante scripts.
-
-## Límites y desarrollo
-
-El modo de caracteres se detiene tras dos espacios consecutivos o cinco caracteres idénticos. El de palabras se detiene tras cinco selecciones idénticas. Los límites son 64 / 128 / 256 caracteres o 32 / 64 / 128 decisiones en modo de palabras. Las paradas por límite o repetición se marcan como incompletas; no se inventa un `END`. El dibujo también respeta límites de cuadrícula, repetición y pasos, conservando el resultado parcial.
-
-Las pruebas están en `tests/` y no llaman a la API de pago:
+## Desarrollo
 
 ```bash
 python3 -m unittest discover -s tests -t . -v
 python3 -m unittest tests.test_chat_words -v
+node --check calculator_ui/app.js
 ```
 
-`calculator_ui/` contiene la interfaz, `api/` las funciones de nube y `docs/` las traducciones. Laya local es opcional, no necesita clave y no recurre a la nube si falla. Consulta el [README en inglés](../README.md) para los algoritmos, la instalación de Laya y la estructura completa.
+Las pruebas simulan respuestas del modelo; las de integración HTTP usan un puerto de loopback. CI comprueba Python 3.9 y 3.12 y la sintaxis del JavaScript de la interfaz. Verificamos que funcione el experimento, no que Jev haya desarrollado sentido común.
+
+| Directorio | Contenido |
+| --- | --- |
+| `calculator_ui/` | Interfaz y traducciones |
+| `api/` | Puntos de entrada de las funciones Vercel |
+| `tests/` | Pruebas unitarias y de integración HTTP |
+| `docs/` | READMEs traducidos y guía de desarrollo |
+
+Referencias: [Inicio rápido de TypeSafe](https://docs.typesafe.ai/introduction/quickstart), [Choice](https://docs.typesafe.ai/primitives/choice), [HTTP API](https://docs.typesafe.ai/api), [confidence](https://docs.typesafe.ai/confidence).
