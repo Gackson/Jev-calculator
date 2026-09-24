@@ -3,7 +3,7 @@ import string
 import copy
 import time
 
-from calculator import validate_choice, notes_context
+from calculator import validate_choice, notes_context, model_request
 from typesafe_client import model_matches, system_one
 
 MAX_CHARACTERS = 256
@@ -56,9 +56,9 @@ def chat_step(body, token, model='jev-1.13.0', call=None):
                 or not isinstance(item.get('content'), str) or len(item['content']) > 1000):
             raise ValueError('Invalid history entry')
         clean_history.append({'role': item['role'], 'content': item['content']})
-    payload = {'model': model, 'state': {'conversation': clean_history, 'user_message': prompt,
-               'reply_so_far': prefix, **extra_context}, 'questions': {'character': {
-                   'type': 'choice', 'instructions': INSTRUCTIONS, 'criteria': OPTIONS}}}
+    payload = model_request(model, {'conversation': clean_history, 'user_message': prompt,
+                            'reply_so_far': prefix, **extra_context}, {'character': {
+                                'type': 'choice', 'instructions': INSTRUCTIONS, 'criteria': OPTIONS}})
     started = time.monotonic()
     request_input = copy.deepcopy(payload)
     response = (call or (lambda payload: system_one(token, payload)))(payload)

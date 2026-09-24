@@ -2,7 +2,7 @@
 import copy
 import time
 
-from calculator import validate_choice, validate_noul, notes_context
+from calculator import validate_choice, validate_noul, notes_context, model_request
 from typesafe_client import model_matches, system_one
 
 DIRECTIONS = {'N': (0, -1), 'NE': (1, -1), 'E': (1, 0), 'SE': (1, 1),
@@ -112,7 +112,7 @@ def draw_step(body, token, model='jev-1.13.0', call=None):
             if mode == 'ballpoint':
                 instruction += 'The pen is lifted; choose where to start a new stroke. '
         questions = {'draw': {'type': 'choice', 'instructions': instruction, 'criteria': options}}
-    payload = dict(model=model, state=view, questions=questions)
+    payload = model_request(model, view, questions)
     recorded = copy.deepcopy(payload)
     started = time.monotonic()
     response = (call or (lambda data: system_one(token, data)))(payload)

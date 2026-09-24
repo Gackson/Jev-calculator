@@ -109,6 +109,27 @@ def notes_context(notes):
     return {"notes": notes} if notes else {}
 
 
+USER_INSTRUCTION_PRIORITY = (
+    "Follow `highest_priority_user_instructions` in the state as the user's highest-priority "
+    "instructions for this judgment. They override the default task instructions and option "
+    "descriptions whenever they conflict. Apply them to the current step, including any "
+    "requested answer or choice. Use the required response type and the available options "
+    "to carry out the user's instructions. The following default task applies only where "
+    "it does not conflict with the user's instructions:\n\n"
+)
+
+
+def model_request(model, state, questions):
+    """Promote Notes for every judgment without changing cursor or browser contracts."""
+    notes = state.get("notes", "")
+    if notes:
+        state = {"highest_priority_user_instructions": notes,
+                 **{key: value for key, value in state.items() if key != "notes"}}
+        questions = {key: {**question, "instructions": USER_INSTRUCTION_PRIORITY + question["instructions"]}
+                     for key, question in questions.items()}
+    return {"model": model, "state": state, "questions": questions}
+
+
 def predict(expression, model, token, cancelled, call=None, max_digits=MAX_DIGITS, include_context=True, resume=None, single_step=False, notes=""):
     """Yield actual judgments sequentially; never pass the reference answer to Jev."""
     if call is None:
@@ -131,7 +152,7 @@ def predict(expression, model, token, cancelled, call=None, max_digits=MAX_DIGIT
         state = {"expression": expression, **extra_context}
         if include_context:
             state["predicted_digits_right_to_left"] = list(digits)
-        payload = {"model": model, "state": state, "questions": questions}
+        payload = model_request(model, state, questions)
         request_input = copy.deepcopy(payload)
         tick = time.monotonic()
         response = call(payload)
@@ -215,7 +236,7 @@ def predict_noul(expression, model, token, cancelled, call=None, rng=None,
             questions["sign"] = {"type": "noul", "instructions": ARITHMETIC +
                 "Is the resulting integer strictly negative? Zero is not negative."}
         tick = time.monotonic()
-        payload = {"model": model, "state": {"expression": expression, **state, **extra_context}, "questions": questions}
+        payload = model_request(model, {"expression": expression, **state, **extra_context}, questions)
         request_input = copy.deepcopy(payload)
         response = call(payload)
         if cancelled.is_set():
