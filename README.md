@@ -21,7 +21,7 @@ jev-olympics 是由 TypeSafe Jev 模型驱动的一组概率实验，包含计�
 
 ## 在线体验：
 
-https://jev-calculator-eta.vercel.app/
+https://jev-olympics.vercel.app/
 
 ## 获取 TypeSafe API Key
 
@@ -63,7 +63,7 @@ Key 输入兼容纯密钥、包裹引号、`Bearer ...` 和 `TYPESAFE_API_KEY=".
 
 本地页面右上角新增 **TypeSafe API / Laya · 本地** 下拉框，三种功能共用此选择；运行期间禁止切换。Laya 不需要 API Key，也不调用 TypeSafe，失败时不会回退云端。模型首次调用时加载并缓存，后续请求复用；首次加载可能较慢。历史判断保留当时的模型与输入。
 
-当前工作区已准备好模型和 Python 环境，可从 `Jev-calculator` 目录运行：
+当前工作区已准备好模型和 Python 环境，可从项目根目录运行：
 
 ```bash
 ../.venv-laya/bin/python calculator.py --provider laya
